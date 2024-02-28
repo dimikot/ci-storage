@@ -1,5 +1,8 @@
-name: "CI Storage"
-description: "Quickly stores the content of huge work directory with low percentage of changed files in the storage on a remote host, or loads the content from the storage."
+name: CI Storage
+description: "Quickly stores huge work directory with low percentage of changed files on a remote host, or loads it from that host."
+branding:
+  icon: upload-cloud
+  color: blue
 inputs:
   action:
     description: "What to do (store or load)."
