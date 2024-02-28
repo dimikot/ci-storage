@@ -34,7 +34,7 @@ runs:
   steps:
     - name: Run ci-storage ${{ inputs.action }}
       run: >
-        pwd && ./ci-storage
+        pwd && "${{ github.action_path }}ci-storage"
         --storage-host="${{ inputs.storage-host || '' }}"
         --storage-dir="${{ inputs.storage-dir || '' }}"
         --storage-max-age-sec="${{ inputs.storage-max-age-sec || '' }}"

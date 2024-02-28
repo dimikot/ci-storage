@@ -31,7 +31,7 @@ ones, so rsync can run efficiently.
 
 <!-- start usage -->
 ```yaml
-- uses: actions/ci-storage@v1
+- uses: dimikot/ci-storage@v1
   with:
     # What to do (store or load).
     # Required.
@@ -82,7 +82,7 @@ jobs:
       - name: Build
         run: npm i && npm run build
       - name: Store build artifacts, work directory and .git directory
-        uses: actions/ci-storage@v1
+        uses: dimikot/ci-storage@v1
         with:
           action: store
           storage-host: my-hostname.com
@@ -109,7 +109,7 @@ jobs:
     runs-on: [self-hosted]
     steps:
       - name: Load build artifacts, work directory and .git directory
-        uses: actions/ci-storage@v1
+        uses: dimikot/ci-storage@v1
         with:
           action: load
           storage-host: my-hostname.com
