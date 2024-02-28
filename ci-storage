@@ -25,9 +25,9 @@ def main():
             Quickly stores the content of some local directory in the storage
             with the provided slot id on a remote host, or loads the content
             from the storage to that directory. The tool makes some smart
-            differential optimizations along the way to perform it as fast as
+            differential optimizations along the way to operate as fast as
             possible (typically, 4 seconds for a 1.5G directory with 200K files
-            in it on Linux ext4).
+            in it on Linux EXT4).
 
             Under the hood, the tool uses rsync. When storing to the remote
             storage, it uses rsync's "--link-dest" mode pointing to the most
