@@ -1,0 +1,30 @@
+name: "CI Full Run"
+on:
+  pull_request:
+    branches:
+      - main
+      - grok/*/*
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+      - name: Create dummy file
+        run: echo "dummy" > dummy.txt
+      - name: Test store
+        uses: ./
+        with:
+          action: "store"
+          storage-host: ""
+      - name: Remove dummy file
+        run: rm dummy.txt
+      - name: Test load
+        uses: ./
+        with:
+          action: "load"
+          storage-host: ""
+      - name: Check that dummy file was restored
+        run: |
+          ls -la ~/ci-storage
+          [ "$(cat dummy.txt)" = "dummy" ] || { echo "dummy.txt was not restored"; exit 1; }
