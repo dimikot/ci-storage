@@ -165,11 +165,7 @@ def action_store(
             "--partial",
             "--inplace",
             "--stats",
-            *(
-                [f"--link-dest={storage_dir}/{slot_id_recent}/"]
-                if slot_id_recent
-                else []
-            ),
+            *([f"--link-dest=../{slot_id_recent}/"] if slot_id_recent else []),
             *[f"--exclude={pattern}" for pattern in exclude],
             *(["-v"] if verbose else []),
             f"{local_dir}/",
