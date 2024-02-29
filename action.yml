@@ -11,7 +11,7 @@ inputs:
     description: "Storage host in the format [user@]host; it must have password-free SSH key access."
     required: true
   storage-dir:
-    description: "Storage directory on the remote host. If not set, uses the ci-storage tool default ~/ci-storage."
+    description: "Storage directory on the remote host. If not set, uses ~/ci-storage/{owner}/{repo}"
     required: false
   storage-max-age-sec:
     description: "Remove slots created earlier than this many seconds ago. If not set, uses the ci-storage tool default 4 hours."
@@ -36,7 +36,7 @@ runs:
       run: >
         pwd && "${{ github.action_path }}/ci-storage"
         --storage-host="${{ inputs.storage-host || '' }}"
-        --storage-dir="${{ inputs.storage-dir || '' }}"
+        --storage-dir="${{ inputs.storage-dir || format('~/ci-storage/{0}', github.repository) }}"
         --storage-max-age-sec="${{ inputs.storage-max-age-sec || '' }}"
         --slot-id="${{ inputs.slot-id || format('{0}-{1}', github.run_id, github.run_attempt) }}"
         --local-dir="${{ inputs.local-dir || '.' }}"

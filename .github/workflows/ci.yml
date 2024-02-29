@@ -29,5 +29,6 @@ jobs:
           storage-host: ""
       - name: Check that dummy file was restored
         run: |
-          ls -la ~/ci-storage
+          set -e
+          ls -la ~/ci-storage/dimikot/ci-storage
           [ "$(cat dummy.txt)" = "dummy" ] || { echo "dummy.txt was not restored"; exit 1; }
