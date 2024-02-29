@@ -43,7 +43,7 @@ ones, so rsync can run efficiently.
     storage-host: ''
 
     # Storage directory on the storage host.
-    # Default: "ci-storage/" in the storage host's home directory.
+    # Default: ~/ci-storage/{owner}/{repo} in the storage host's user home.
     storage-dir: ''
 
     # Remove slots created earlier than this many seconds ago.

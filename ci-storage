@@ -13,7 +13,7 @@ import os.path
 
 STORAGE_MAX_AGE_SEC_DEFAULT = 3600 * 4
 STORAGE_MAX_AGE_SEC_BAK = 60
-STORAGE_DIR_DEFAULT = "ci-storage"
+STORAGE_DIR_DEFAULT = "~/ci-storage"
 
 
 #
@@ -59,8 +59,9 @@ def main():
     parser.add_argument(
         "--storage-dir",
         type=str,
+        default=STORAGE_DIR_DEFAULT,
         required=False,
-        help="storage directory path on the storage host; defaults to ~/ci-storage",
+        help=f"storage directory path on the storage host (will be created if it does not exist)",
     )
     parser.add_argument(
         "--storage-max-age-sec",
@@ -99,9 +100,9 @@ def main():
     action: typing.Literal["store", "load"] = args.action
     storage_host: str | None = args.storage_host or None
     storage_dir: str = (
-        (args.storage_dir and re.sub(r"/+$", "", args.storage_dir))
-        or (storage_host and STORAGE_DIR_DEFAULT)
-        or os.path.expanduser(f"~/{STORAGE_DIR_DEFAULT}")
+        re.sub(r"/+$", "", args.storage_dir)
+        if args.storage_dir
+        else STORAGE_DIR_DEFAULT
     )
     storage_max_age_sec: int = int(
         args.storage_max_age_sec or str(STORAGE_MAX_AGE_SEC_DEFAULT)
@@ -112,6 +113,16 @@ def main():
         line for line in "\n".join(args.exclude).splitlines() if line.strip()
     ]
     verbose: bool = args.verbose
+
+    if storage_host:
+        # Rsync doesn't expand "~" in the remote path when syncing to a remote
+        # host, but it is anyways relative to the remote user's home directory,
+        # so we just remove "~".
+        storage_dir = re.sub(r"^~/*", "", storage_dir) or "."
+    else:
+        # When syncing to the current filesystem, expand "~" manually, since
+        # rsync doesn't do it.
+        storage_dir = os.path.expanduser(storage_dir)
 
     if action == "store":
         action_store(
@@ -383,7 +394,7 @@ SCRIPTS = {
         my $storage_dir = $ARGV[0] or die("storage_dir argument required\n");
         length($storage_dir) >= 3 or die("storage_dir is suspiciously short\n");
         if (!-d $storage_dir) {
-            mkdir($storage_dir) or die("mkdir $storage_dir: $!\n");
+            system("mkdir", "-p", $storage_dir) == 0 or exit(1);
         }
         my @slot_dirs = glob("$storage_dir/*/");
         foreach my $dir (@slot_dirs) {
