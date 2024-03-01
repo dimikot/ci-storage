@@ -7,21 +7,23 @@ ARG RUNNER_VERSION="2.314.1"
 ENV GH_REPOSITORY=""
 ENV GH_LABELS=""
 ENV GH_TOKEN=""
+ENV CI_STORAGE_HOST=""
+ENV CI_STORAGE_HOST_SSH_KEY=""
 
 ENV DEBIAN_FRONTEND=noninteractive
 RUN true \
     && apt-get update -y \
     && apt-get upgrade -y \
     && apt-get install -y --no-install-recommends \
-      awscli jq gh \
+      awscli jq gh rsync openssh-client \
       mc gcc git curl wget pv psmisc unzip vim nano telnet net-tools bash-completion \
-      libssl-dev apt-transport-https build-essential ca-certificates locales pkg-config
-
-RUN true \
+      libssl-dev apt-transport-https build-essential ca-certificates locales pkg-config \
     && useradd -m ubuntu
 
 USER ubuntu
 RUN true \
+    && mkdir -p /home/ubuntu/.ssh \
+    && chmod 700 /home/ubuntu/.ssh \
     && mkdir /home/ubuntu/actions-runner \
     && cd /home/ubuntu/actions-runner \
     && arch=$(dpkg --print-architecture) \
@@ -41,6 +43,7 @@ RUN /home/ubuntu/actions-runner/bin/installdependencies.sh \
 
 USER ubuntu
 COPY --chmod=755 --chown=ubuntu:ubuntu entrypoint.sh /home/ubuntu
+COPY --chmod=755 --from=root ci-storage /usr/bin/ci-storage
 
 WORKDIR /home/ubuntu
 ENTRYPOINT ["./entrypoint.sh"]
@@ -48,4 +51,3 @@ ENTRYPOINT ["./entrypoint.sh"]
 # If overridden in the derived image, evals this as "ubuntu" user as a shell
 # script after config.sh, but before run.sh.
 CMD []
-

@@ -24,6 +24,22 @@ set -u -e -o xtrace
 cd ./actions-runner
 
 name="ci-storage-$(hostname)"
+repo_name="${GH_REPOSITORY##*/}"
+local_dir=_work/$repo_name/$repo_name
+
+set +o xtrace
+if [ "${CI_STORAGE_HOST_SSH_KEY:-}" != "" ]; then
+  echo "$CI_STORAGE_HOST_SSH_KEY" > ~/.ssh/id_ed25519
+  chmod 600 ~/.ssh/id_ed25519
+fi
+set -o xtrace
+
+if [ "${CI_STORAGE_HOST:-}" != "" ]; then
+  ssh-keyscan -H "$CI_STORAGE_HOST" >> ~/.ssh/known_hosts
+  chmod 600 ~/.ssh/known_hosts
+  mkdir -p $local_dir
+  ci-storage --storage-host="$CI_STORAGE_HOST" --storage-dir="~/ci-storage/$GH_REPOSITORY" --slot-id="*" --local-dir="$local_dir" load
+fi
 
 token=$(gh api -X POST --jq .token "repos/$GH_REPOSITORY/actions/runners/registration-token")
 ./config.sh \
