@@ -7,8 +7,10 @@ on:
   push:
     branches:
       - main
+
 jobs:
-  test:
+  # Tests ci-storage tool itself.
+  ci-storage-test:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -32,3 +34,38 @@ jobs:
           set -e
           ls -la ~/ci-storage/dimikot/ci-storage
           [ "$(cat dummy.txt)" = "dummy" ] || { echo "dummy.txt was not restored"; exit 1; }
+
+  # Builds and boots a self-hosted runner inside GitHub's infra. Once it's
+  # settled, there is a container with one self-hosted runner running and
+  # waiting for jobs with "ci-storage-test" tag to pick up (based on
+  # docker/Dockerfile image).
+  self-hosted-runner-build-and-boot-docker-container:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      actions: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+      - name: Build self-hosted runner Docker image
+        run: cd docker && docker-compose build
+      - name: Start self-hosted runner in a Docker container
+        run: cd docker && docker-compose up
+        env:
+          GH_REPOSITORY: ${{ github.repository }}
+          GH_LABELS: ci-storage-test
+          GH_TOKEN: ${{ secrets.CI_PAT  }}
+
+  # The test job with ci-storage-test tag which is initially queued, but then is
+  # picked up by the self-hosted runner booted in the previous job. In the end,
+  # the test job sends SIGINT to the container entrypoint.sh PID, so the
+  # container (based on docker/Dockerfile image) shuts down gracefully.
+  self-hosted-runner-spawn-job-test:
+    runs-on: ["self-hosted", "ci-storage-test"]
+    steps:
+      - name: Run test job inside of the self-hosted runner and terminate run.sh
+        run: |
+          set -e -o xtrace
+          echo "Hello, world!"
+          cd /home/ubuntu/actions-runner
+          kill -SIGINT $(cat runner.pid)

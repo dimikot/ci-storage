@@ -1,0 +1,10 @@
+version: "3.4"
+services:
+  ci-storage:
+    build:
+      context: .
+      dockerfile: ./Dockerfile
+    environment:
+      - GH_REPOSITORY
+      - GH_LABELS
+      - GH_TOKEN
