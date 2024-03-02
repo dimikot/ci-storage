@@ -20,3 +20,7 @@ self-hosted runners as you want. An example scenario:
    artifacts of someone else. If the job then uses ci-storage GitHub action to
    restore the files from a slot, it will be very quick, because most of the
    files are already there.
+
+The container in this Dockerfile is serves only one particular GitHub repository
+(controlled by GH_REPOSITORY environment variable at boot time). To serve
+different repositories, boot different containers.

@@ -1,0 +1,10 @@
+{
+  "recommendations": [
+    "GitHub.vscode-github-actions",
+    "jeff-hykin.better-dockerfile-syntax",
+    "mads-hartmann.bash-ide-vscode",
+    "ms-python.black-formatter",
+    "ms-python.python",
+    "timonwong.shellcheck",
+  ]
+}

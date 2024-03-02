@@ -39,7 +39,7 @@ ones, so rsync can run efficiently.
 
     # Storage host in the format [user@]host; it must have password-free
     # SSH key access.
-    # Required.
+    # Default: the content of ~/ci-storage-host file.
     storage-host: ''
 
     # Storage directory on the storage host.

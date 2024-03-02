@@ -74,7 +74,7 @@ def main():
         "--slot-id",
         type=str,
         required=True,
-        help='id of the slot to store to or load from; use "*" to load a random most recent slot',
+        help='id of the slot to store to or load from; use "*" to load a random most recent slot; use "?" to load a random most recent slot and skip if it does not exist',
     )
     parser.add_argument(
         "--local-dir",
@@ -162,8 +162,8 @@ def action_store(
     exclude: list[str],
     verbose: bool,
 ):
-    if slot_id == "*":
-        raise UserException('slot_id="*" is not allowed for "store" action')
+    if slot_id == "*" or slot_id == "?":
+        raise UserException(f'slot_id="{slot_id}" is not allowed for "store" action')
     slot_id = normalize_slot_id(slot_id)
     slot_ids_and_ages = list_slots(storage_host=storage_host, storage_dir=storage_dir)
     slot_id_recent = slot_ids_and_ages[0][0] if len(slot_ids_and_ages) else None
@@ -208,14 +208,18 @@ def action_load(
     exclude: list[str],
     verbose: bool,
 ):
-    if slot_id == "*":
+    if slot_id == "*" or slot_id == "?":
         slot_ids_and_ages = list_slots(
             storage_host=storage_host, storage_dir=storage_dir
         )
         if len(slot_ids_and_ages) == 0:
-            raise UserException(
-                'to use slot_id="*", there must be at least one slot in the storage.'
-            )
+            if slot_id == "?":
+                print(f'No slots found, and slot-id="{slot_id}", so skipping.')
+                return
+            else:
+                raise UserException(
+                    f'to use slot-id="{slot_id}", there must be at least one slot in the storage.'
+                )
         slot_id = slot_ids_and_ages[0][0]
     else:
         slot_id = normalize_slot_id(slot_id)

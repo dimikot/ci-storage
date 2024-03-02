@@ -8,8 +8,8 @@ inputs:
     description: "What to do (store or load)."
     required: true
   storage-host:
-    description: "Storage host in the format [user@]host; it must have password-free SSH key access."
-    required: true
+    description: "Storage host in the format [user@]host; it must have password-free SSH key access. If not passed, tries to read it from ~/ci-storage-host file."
+    required: false
   storage-dir:
     description: "Storage directory on the remote host. If not set, uses ~/ci-storage/{owner}/{repo}"
     required: false
@@ -17,7 +17,7 @@ inputs:
     description: "Remove slots created earlier than this many seconds ago. If not set, uses the ci-storage tool default 4 hours."
     required: false
   slot-id:
-    description: 'Id of the slot to store to or load from; use "*" to load a random most recent slot. If empty, uses "$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT" value.'
+    description: 'Id of the slot to store to or load from; use "*" to load a random most recent slot; use "?" to load a random most recent slot and skip if it does not exist. If empty, uses "$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT" value.'
     required: false
   local-dir:
     description: 'Local directory path to store from or load to. If not set, uses "." (the current work directory).'
@@ -27,20 +27,25 @@ inputs:
     required: false
   verbose:
     description: "If set, prints the list of transferred files."
-    type: boolean
     required: false
 runs:
   using: "composite"
   steps:
     - name: Run ci-storage ${{ inputs.action }}
-      run: >
-        pwd && "${{ github.action_path }}/ci-storage"
-        --storage-host="${{ inputs.storage-host || '' }}"
-        --storage-dir="${{ inputs.storage-dir || format('~/ci-storage/{0}', github.repository) }}"
-        --storage-max-age-sec="${{ inputs.storage-max-age-sec || '' }}"
-        --slot-id="${{ inputs.slot-id || format('{0}-{1}', github.run_id, github.run_attempt) }}"
-        --local-dir="${{ inputs.local-dir || '.' }}"
-        --exclude="${{ inputs.exclude || '' }}"
-        ${{ inputs.verbose && '--verbose' || '' }}
-        ${{ inputs.action }}
+      run: |
+        exec 2>&1; set -e -o xtrace
+        pwd
+        storage_host="${{ inputs.storage-host || '' }}"
+        if [[ "$storage_host" == "" ]]; then
+          storage_host=$(cat ~/ci-storage-host)
+        fi
+        "${{ github.action_path }}/ci-storage" \
+          --storage-host="$storage_host" \
+          --storage-dir="${{ inputs.storage-dir || format('~/ci-storage/{0}', github.repository) }}" \
+          --storage-max-age-sec="${{ inputs.storage-max-age-sec || '' }}" \
+          --slot-id="${{ inputs.slot-id || format('{0}-{1}', github.run_id, github.run_attempt) }}" \
+          --local-dir="${{ inputs.local-dir || '.' }}" \
+          --exclude="${{ inputs.exclude || '' }}" \
+          ${{ inputs.verbose && '--verbose' || '' }} \
+          ${{ inputs.action }}
       shell: bash
