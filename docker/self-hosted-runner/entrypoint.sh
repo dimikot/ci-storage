@@ -56,17 +56,15 @@ cd ./actions-runner
 name="ci-storage-$(hostname)"
 local_dir=_work/${GH_REPOSITORY##*/}/${GH_REPOSITORY##*/}
 
-if [[ "$CI_STORAGE_HOST" != "" ]]; then
+if [[ "$CI_STORAGE_HOST" != "" && "$CI_STORAGE_HOST_PRIVATE_KEY" != "" ]]; then
   ssh-keyscan -H "$CI_STORAGE_HOST" >> ~/.ssh/known_hosts
   chmod 600 ~/.ssh/known_hosts
   mkdir -p "$local_dir"
-  if [[ "$CI_STORAGE_HOST_PRIVATE_KEY" != "" ]]; then
-    ci-storage load \
-      --storage-host="$CI_STORAGE_HOST" \
-      --storage-dir="~/ci-storage/$GH_REPOSITORY" \
-      --slot-id="?" \
-      --local-dir="$local_dir"
-  fi
+  ci-storage load \
+    --storage-host="$CI_STORAGE_HOST" \
+    --storage-dir="~/ci-storage/$GH_REPOSITORY" \
+    --slot-id="?" \
+    --local-dir="$local_dir"
 fi
 
 token=$(gh api -X POST --jq .token "repos/$GH_REPOSITORY/actions/runners/registration-token")
