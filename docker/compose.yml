@@ -1,8 +1,8 @@
 version: "3.4"
 services:
-  ci-storage-host:
+  host:
     build:
-      context: ci-storage-host
+      context: host
       dockerfile: Dockerfile
     healthcheck:
       test: ["CMD", "bash", "-c", "netstat -ltn | grep -c :22"]
@@ -18,11 +18,11 @@ services:
       context: self-hosted-runner
       dockerfile: Dockerfile
     depends_on:
-      ci-storage-host:
+      host:
         condition: service_healthy
     environment:
       - GH_REPOSITORY=${GH_REPOSITORY:-dimikot/ci-storage}
       - GH_LABELS=${GH_LABELS:-ci-storage}
       - GH_TOKEN
-      - CI_STORAGE_HOST=${CI_STORAGE_HOST:-ci-storage-host}
+      - CI_STORAGE_HOST=${CI_STORAGE_HOST:-host}
       - CI_STORAGE_HOST_PRIVATE_KEY=${CI_STORAGE_HOST_PRIVATE_KEY_TEST_ONLY?}
