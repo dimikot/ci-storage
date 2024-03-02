@@ -7,3 +7,5 @@ Build an image from this Dockerfile to launch a simple SSH server with rsync.
 
 One "host" container may serve multiple GitHub repositories. Each of them will
 have own directory in /home/user/ci-storage (managed by ci-storage tool).
+
+See also https://github.com/dimikot/ci-storage
