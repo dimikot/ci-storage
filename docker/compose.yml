@@ -16,8 +16,6 @@ services:
   self-hosted-runner:
     build:
       context: self-hosted-runner
-      additional_contexts:
-        root: ..
       dockerfile: Dockerfile
     depends_on:
       ci-storage-host:

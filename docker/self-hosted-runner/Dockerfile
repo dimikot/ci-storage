@@ -32,16 +32,18 @@ RUN true \
     && curl --no-progress-meter -L https://github.com/actions/runner/releases/download/v$RUNNER_VERSION/actions-runner-$arch-$RUNNER_VERSION.tar.gz | tar xz
 
 USER root
-RUN ~user/actions-runner/bin/installdependencies.sh \
+RUN true \
+    && ~user/actions-runner/bin/installdependencies.sh \
     && apt-get autoremove \
     && apt-get clean \
     && apt-get autoclean \
-    && rm -rf /var/lib/apt/lists/*
+    && rm -rf /var/lib/apt/lists/* \
+    && curl https://raw.githubusercontent.com/dimikot/ci-storage/main/ci-storage > /usr/bin/ci-storage \
+    && chmod 755 /usr/bin/ci-storage
+
+COPY --chmod=755 --chown=user:user entrypoint.sh /home/user
 
 USER user
-COPY --chmod=755 --chown=user:user entrypoint.sh /home/user
-COPY --chmod=755 --from=root ci-storage /usr/bin/ci-storage
-
 WORKDIR /home/user
 ENTRYPOINT ["./entrypoint.sh"]
 
