@@ -1,5 +1,4 @@
 ARG BASE_IMAGE="ubuntu:22.04"
-
 FROM $BASE_IMAGE
 
 ARG RUNNER_VERSION="2.314.1"
@@ -8,24 +7,22 @@ ENV GH_REPOSITORY=""
 ENV GH_LABELS=""
 ENV GH_TOKEN=""
 ENV CI_STORAGE_HOST=""
-ENV CI_STORAGE_HOST_SSH_KEY=""
+ENV CI_STORAGE_HOST_PRIVATE_KEY=""
 
 ENV DEBIAN_FRONTEND=noninteractive
 RUN true \
     && apt-get update -y \
-    && apt-get upgrade -y \
     && apt-get install -y --no-install-recommends \
-      awscli jq gh rsync openssh-client \
-      mc gcc git curl wget pv psmisc unzip vim nano telnet net-tools bash-completion \
-      libssl-dev apt-transport-https build-essential ca-certificates locales pkg-config \
-    && useradd -m ubuntu
+      openssh-client \
+      jq gh rsync python3 mc git curl wget pv psmisc unzip vim nano telnet net-tools apt-transport-https ca-certificates locales \
+    && useradd -m user
 
-USER ubuntu
+USER user
 RUN true \
-    && mkdir -p /home/ubuntu/.ssh \
-    && chmod 700 /home/ubuntu/.ssh \
-    && mkdir /home/ubuntu/actions-runner \
-    && cd /home/ubuntu/actions-runner \
+    && mkdir -p ~user/.ssh \
+    && chmod 700 ~user/.ssh \
+    && mkdir ~user/actions-runner \
+    && cd ~user/actions-runner \
     && arch=$(dpkg --print-architecture) \
     && case "$arch" in \
       x86_64|amd64) arch=linux-x64 ;; \
@@ -35,19 +32,19 @@ RUN true \
     && curl --no-progress-meter -L https://github.com/actions/runner/releases/download/v$RUNNER_VERSION/actions-runner-$arch-$RUNNER_VERSION.tar.gz | tar xz
 
 USER root
-RUN /home/ubuntu/actions-runner/bin/installdependencies.sh \
-    apt-get autoremove \
+RUN ~user/actions-runner/bin/installdependencies.sh \
+    && apt-get autoremove \
     && apt-get clean \
     && apt-get autoclean \
     && rm -rf /var/lib/apt/lists/*
 
-USER ubuntu
-COPY --chmod=755 --chown=ubuntu:ubuntu entrypoint.sh /home/ubuntu
+USER user
+COPY --chmod=755 --chown=user:user entrypoint.sh /home/user
 COPY --chmod=755 --from=root ci-storage /usr/bin/ci-storage
 
-WORKDIR /home/ubuntu
+WORKDIR /home/user
 ENTRYPOINT ["./entrypoint.sh"]
 
-# If overridden in the derived image, evals this as "ubuntu" user as a shell
-# script after config.sh, but before run.sh.
+# If overridden in the derived image, evals this as a shell script after
+# config.sh, but before run.sh.
 CMD []

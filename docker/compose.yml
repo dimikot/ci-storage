@@ -1,0 +1,30 @@
+version: "3.4"
+services:
+  ci-storage-host:
+    build:
+      context: ci-storage-host
+      dockerfile: Dockerfile
+    healthcheck:
+      test: ["CMD", "bash", "-c", "netstat -ltn | grep -c :22"]
+      interval: 1s
+      timeout: 3s
+      retries: 10
+    ports:
+      - 10022:22
+    environment:
+      - CI_STORAGE_HOST_PUBLIC_KEY=${CI_STORAGE_HOST_PUBLIC_KEY_TEST_ONLY?}
+  self-hosted-runner:
+    build:
+      context: self-hosted-runner
+      additional_contexts:
+        root: ..
+      dockerfile: Dockerfile
+    depends_on:
+      ci-storage-host:
+        condition: service_healthy
+    environment:
+      - GH_REPOSITORY=${GH_REPOSITORY:-dimikot/ci-storage}
+      - GH_LABELS=${GH_LABELS:-ci-storage}
+      - GH_TOKEN
+      - CI_STORAGE_HOST=${CI_STORAGE_HOST:-ci-storage-host}
+      - CI_STORAGE_HOST_PRIVATE_KEY=${CI_STORAGE_HOST_PRIVATE_KEY_TEST_ONLY?}
