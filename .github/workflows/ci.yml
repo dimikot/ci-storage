@@ -58,7 +58,7 @@ jobs:
           docker compose up self-hosted-runner
         env:
           GH_REPOSITORY: ${{ github.repository }}
-          GH_LABELS: ci-storage-test
+          GH_LABELS: ${{ format('ci-storage-test-{0}-{1}', github.run_id, github.run_attempt) }}
           GH_TOKEN: ${{ secrets.CI_PAT }}
 
   # Test the job with "ci-storage-test" tag which is initially queued, but then
@@ -66,7 +66,9 @@ jobs:
   # In the end, the test job sends SIGINT to the container entrypoint.sh PID, so
   # the container (based on Dockerfile image) shuts down gracefully.
   spawn-job-test:
-    runs-on: ["self-hosted", "ci-storage-test"]
+    runs-on:
+      - self-hosted
+      - ${{ format('ci-storage-test-{0}-{1}', github.run_id, github.run_attempt) }}
     steps:
       - uses: actions/checkout@v4
       - name: Run test job inside the self-hosted runner
@@ -78,52 +80,70 @@ jobs:
       - name: Kill self-hosted runner container
         run: kill -SIGINT $(cat ~user/entrypoint.pid)
 
-  # Publishes host image to Docker Hub.
+  # Publishes "host" image to Docker Hub.
   push-host:
     runs-on: ubuntu-latest
+    if: github.event_name != 'pull_request'
     needs:
       - ci-storage-tool-test
       - build-and-boot-containers
       - spawn-job-test
     steps:
       - uses: actions/checkout@v4
+      - uses: docker/setup-qemu-action@v3
+      - uses: docker/setup-buildx-action@v3
       - uses: docker/metadata-action@v5
         id: meta
         with:
           images: dimikot/ci-storage-host
       - uses: docker/login-action@v3
-        if: github.event_name != 'pull_request'
         with:
           username: dimikot
           password: ${{ secrets.DOCKERHUB_PAT }}
       - uses: docker/build-push-action@v5
         with:
           context: docker/host
+          platforms: linux/amd64,linux/arm64,linux/arm64/v8
           push: ${{ github.event_name != 'pull_request' }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
+      - uses: peter-evans/dockerhub-description@v3
+        with:
+          username: dimikot
+          password: ${{ secrets.DOCKERHUB_PAT }}
+          readme-filepath: docker/host/README.md
+          repository: dimikot/ci-storage-host
 
-  # Publishes self-hosted-runner image to Docker Hub.
+  # Publishes "self-hosted-runner" image to Docker Hub.
   push-self-hosted-runner:
     runs-on: ubuntu-latest
+    if: github.event_name != 'pull_request'
     needs:
       - ci-storage-tool-test
       - build-and-boot-containers
       - spawn-job-test
     steps:
       - uses: actions/checkout@v4
+      - uses: docker/setup-qemu-action@v3
+      - uses: docker/setup-buildx-action@v3
       - uses: docker/metadata-action@v5
         id: meta
         with:
           images: dimikot/ci-storage-self-hosted-runner
       - uses: docker/login-action@v3
-        if: github.event_name != 'pull_request'
         with:
           username: dimikot
           password: ${{ secrets.DOCKERHUB_PAT }}
       - uses: docker/build-push-action@v5
         with:
           context: docker/self-hosted-runner
+          platforms: linux/amd64,linux/arm64,linux/arm64/v8
           push: ${{ github.event_name != 'pull_request' }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
+      - uses: peter-evans/dockerhub-description@v3
+        with:
+          username: dimikot
+          password: ${{ secrets.DOCKERHUB_PAT }}
+          readme-filepath: docker/self-hosted-runner/README.md
+          repository: dimikot/ci-storage-self-hosted-runner

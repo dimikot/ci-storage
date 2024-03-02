@@ -24,3 +24,5 @@ self-hosted runners as you want. An example scenario:
 The container in this Dockerfile is serves only one particular GitHub repository
 (controlled by GH_REPOSITORY environment variable at boot time). To serve
 different repositories, boot different containers.
+
+See also https://github.com/dimikot/ci-storage

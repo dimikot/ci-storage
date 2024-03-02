@@ -5,7 +5,7 @@
 #
 set -u -e
 
-if [[ "${CI_STORAGE_HOST_PUBLIC_KEY:=''}" == "" ]]; then
+if [[ "${CI_STORAGE_HOST_PUBLIC_KEY:=}" == "" ]]; then
   echo "CI_STORAGE_HOST_PUBLIC_KEY must be set to a valid SSH public key."
   exit 1
 fi
