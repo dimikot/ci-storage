@@ -14,7 +14,7 @@ RUN true \
     && apt-get update -y \
     && apt-get install -y --no-install-recommends \
       openssh-client \
-      jq gh rsync python3 mc git curl wget pv psmisc unzip vim nano telnet net-tools apt-transport-https ca-certificates locales \
+      jq gh rsync python3 rinetd mc git curl wget pv psmisc unzip vim nano telnet net-tools apt-transport-https ca-certificates locales \
     && useradd -m user
 
 USER user
