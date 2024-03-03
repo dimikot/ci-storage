@@ -8,7 +8,7 @@ inputs:
     description: "What to do (store or load)."
     required: true
   storage-host:
-    description: "Storage host in the format [user@]host; it must have password-free SSH key access. If not passed, tries to read it from ~/ci-storage-host file."
+    description: "Storage host in the format [user@]host[:port]; it must allow password-free SSH key based access. If not passed, tries to read it from ~/ci-storage-host file."
     required: false
   storage-dir:
     description: "Storage directory on the remote host. If not set, uses ~/ci-storage/{owner}/{repo}"

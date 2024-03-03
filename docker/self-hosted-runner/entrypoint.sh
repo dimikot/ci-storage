@@ -29,8 +29,8 @@ if [[ "${GH_TOKEN:=}" == "" ]]; then
   echo "GH_TOKEN must be set.";
   exit 1;
 fi
-if [[ "${CI_STORAGE_HOST:=}" != "" && ! "$CI_STORAGE_HOST" =~ ^([-.[:alnum:]]+@)?[-.[:alnum:]]+$ ]]; then
-  echo "If CI_STORAGE_HOST is passed, it must be in form of {hostname} or {user}@{hostname}.";
+if [[ "${CI_STORAGE_HOST:=}" != "" && ! "$CI_STORAGE_HOST" =~ ^([-.[:alnum:]]+@)?[-.[:alnum:]]+(:[0-9]+)?$ ]]; then
+  echo "If CI_STORAGE_HOST is passed, it must be in form of [user@]host[:port].";
   exit 1;
 fi
 if [[ "${CI_STORAGE_HOST_PRIVATE_KEY:=}" != "" && "$CI_STORAGE_HOST_PRIVATE_KEY" != *OPENSSH\ PRIVATE\ KEY* ]]; then
@@ -57,8 +57,6 @@ name="ci-storage-$(hostname)"
 local_dir=_work/${GH_REPOSITORY##*/}/${GH_REPOSITORY##*/}
 
 if [[ "$CI_STORAGE_HOST" != "" && "$CI_STORAGE_HOST_PRIVATE_KEY" != "" ]]; then
-  ssh-keyscan -H "$CI_STORAGE_HOST" >> ~/.ssh/known_hosts
-  chmod 600 ~/.ssh/known_hosts
   mkdir -p "$local_dir"
   ci-storage load \
     --storage-host="$CI_STORAGE_HOST" \

@@ -37,9 +37,9 @@ RUN true \
     && apt-get autoremove \
     && apt-get clean \
     && apt-get autoclean \
-    && rm -rf /var/lib/apt/lists/* \
-    && curl https://raw.githubusercontent.com/dimikot/ci-storage/main/ci-storage > /usr/bin/ci-storage \
-    && chmod 755 /usr/bin/ci-storage
+    && rm -rf /var/lib/apt/lists/*
+
+ADD --chmod=755 https://raw.githubusercontent.com/dimikot/ci-storage/main/ci-storage /usr/bin/ci-storage
 
 COPY --chmod=755 --chown=user:user entrypoint.sh /home/user
 

@@ -54,7 +54,7 @@ def main():
         "--storage-host",
         type=str,
         required=False,
-        help="storage host in the format [user@]host; it must have password-free SSH key access; if omitted, uses the local filesystem (no SSH)",
+        help="storage host in the format [user@]host[:port]; it must allow password-free SSH key based access; if omitted, uses the local filesystem (no SSH)",
     )
     parser.add_argument(
         "--storage-dir",
@@ -168,9 +168,11 @@ def action_store(
     slot_ids_and_ages = list_slots(storage_host=storage_host, storage_dir=storage_dir)
     slot_id_recent = slot_ids_and_ages[0][0] if len(slot_ids_and_ages) else None
     slot_id_tmp = f"{slot_id}.tmp.{int(time.time())}"
+    host, port = parse_host_port(storage_host)
     check_call(
         cmd=[
             "rsync",
+            *(["-e", shlex.join(build_ssh_cmd(port=port))] if storage_host else []),
             "-a",
             "--delete",
             "--partial",
@@ -180,8 +182,7 @@ def action_store(
             *[f"--exclude={pattern}" for pattern in exclude],
             *(["-v"] if verbose else []),
             f"{local_dir}/",
-            (f"{storage_host}:" if storage_host else "")
-            + f"{storage_dir}/{slot_id_tmp}/",
+            (f"{host}:" if storage_host else "") + f"{storage_dir}/{slot_id_tmp}/",
         ],
         print_elapsed=True,
     )
@@ -223,9 +224,11 @@ def action_load(
         slot_id = slot_ids_and_ages[0][0]
     else:
         slot_id = normalize_slot_id(slot_id)
+    host, port = parse_host_port(storage_host)
     check_call(
         cmd=[
             "rsync",
+            *(["-e", shlex.join(build_ssh_cmd(port=port))] if storage_host else []),
             "-a",
             "--delete",
             "--partial",
@@ -233,7 +236,7 @@ def action_load(
             "--human-readable",
             *[f"--exclude={pattern}" for pattern in exclude],
             *(["-v"] if verbose else []),
-            (f"{storage_host}:" if storage_host else "") + f"{storage_dir}/{slot_id}/",
+            (f"{host}:" if storage_host else "") + f"{storage_dir}/{slot_id}/",
             f"{local_dir}/",
         ],
         print_elapsed=True,
@@ -311,18 +314,11 @@ def check_output(
     cmd: list[str],
     indent: bool = False,
 ) -> str:
-    if host is not None:
-        cmd_prefix = [
-            "ssh",
-            host,
-        ]
-        print(f"$ {cmd_to_debug_str([*cmd_prefix, *cmd])}")
-        cmd = [
-            *cmd_prefix,
-            "-oStrictHostKeyChecking=no",
-            "-oUserKnownHostsFile=/dev/null",
-            shlex.join(cmd),
-        ]
+    host, port = parse_host_port(host)
+    if host:
+        ssh_prefix = [*build_ssh_cmd(port=port), host]
+        print(f"$ {cmd_to_debug_str([*ssh_prefix, *cmd])}")
+        cmd = [*ssh_prefix, shlex.join(cmd)]
     else:
         print(f"$ {cmd_to_debug_str(cmd)}")
     output = subprocess.check_output(cmd, text=True, stderr=subprocess.PIPE)
@@ -360,6 +356,37 @@ def cmd_to_debug_str(
 ) -> str:
     inv = dict((v, k) for k, v in SCRIPTS.items())
     return shlex.join([f"<{inv[arg]}>" if arg in inv else arg for arg in cmd])
+
+
+#
+# Parses host:port pair (with port being optional).
+#
+def parse_host_port(
+    host_port: str | None,
+) -> tuple[str | None, int | None]:
+    if not host_port:
+        return None, None
+    match = re.match(r"^(.*?)(?::(\d+))?$", host_port)
+    if match and match.group(2):
+        return match.group(1), int(match.group(2))
+    else:
+        return host_port, None
+
+
+#
+# Builds ssh command line.
+#
+def build_ssh_cmd(
+    *,
+    port: int | None,
+) -> list[str]:
+    return [
+        "ssh",
+        *([f"-p{port}"] if port else []),
+        "-oStrictHostKeyChecking=no",
+        "-oUserKnownHostsFile=/dev/null",
+        "-oLogLevel=error",
+    ]
 
 
 #

@@ -24,5 +24,5 @@ services:
       - GH_REPOSITORY=${GH_REPOSITORY:-dimikot/ci-storage}
       - GH_LABELS=${GH_LABELS:-ci-storage}
       - GH_TOKEN
-      - CI_STORAGE_HOST=${CI_STORAGE_HOST:-host}
+      - CI_STORAGE_HOST=${CI_STORAGE_HOST:-host:22}
       - CI_STORAGE_HOST_PRIVATE_KEY=${CI_STORAGE_HOST_PRIVATE_KEY_TEST_ONLY?}

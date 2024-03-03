@@ -11,7 +11,7 @@ on:
       - "v*"
 
 jobs:
-  # Tests ci-storage tool itself.
+  # Tests ci-storage tool and action itself.
   ci-storage-tool-test:
     runs-on: ubuntu-latest
     steps:
