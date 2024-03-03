@@ -4,6 +4,7 @@ services:
     build:
       context: host
       dockerfile: Dockerfile
+    stop_grace_period: 1m
     healthcheck:
       test: ["CMD", "bash", "-c", "netstat -ltn | grep -c :22"]
       interval: 1s
@@ -17,6 +18,7 @@ services:
     build:
       context: self-hosted-runner
       dockerfile: Dockerfile
+    stop_grace_period: 1m
     depends_on:
       host:
         condition: service_healthy
