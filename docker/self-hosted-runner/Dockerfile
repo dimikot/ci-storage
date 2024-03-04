@@ -32,6 +32,7 @@ RUN true \
     && curl --no-progress-meter -L https://github.com/actions/runner/releases/download/v$RUNNER_VERSION/actions-runner-$arch-$RUNNER_VERSION.tar.gz | tar xz
 
 USER root
+
 RUN true \
     && ~user/actions-runner/bin/installdependencies.sh \
     && apt-get autoremove \
@@ -39,14 +40,14 @@ RUN true \
     && apt-get autoclean \
     && rm -rf /var/lib/apt/lists/*
 
+# We want the default user to be root, to allow people extend the image with no
+# boilerplate. But when someone runs e.g. "docker compose exec bash -l", we want
+# the user to be "user".
+RUN echo "cd ~user && gosu user:user bash" > ~/.bash_profile
+
 ADD --chmod=755 https://raw.githubusercontent.com/dimikot/ci-storage/main/ci-storage /usr/bin/ci-storage
+COPY --chmod=755 --chown=root:root root/entrypoint*.sh /root
+COPY --chmod=755 --chown=user:user user/entrypoint*.sh /home/user
 
-COPY --chmod=755 --chown=user:user entrypoint.sh /home/user
-
-USER user
-WORKDIR /home/user
-ENTRYPOINT ["./entrypoint.sh"]
-
-# If overridden in the derived image, evals this as a shell script after
-# config.sh, but before run.sh.
-CMD []
+WORKDIR /root
+ENTRYPOINT ["/root/entrypoint.sh"]

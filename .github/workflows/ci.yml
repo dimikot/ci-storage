@@ -78,7 +78,7 @@ jobs:
         with:
           action: "store"
       - name: Kill self-hosted runner container
-        run: kill -SIGINT $(cat ~user/entrypoint.pid)
+        run: kill -SIGINT $(cat ~user/.entrypoint.pid)
 
   # Publishes "host" image to Docker Hub.
   push-host:
