@@ -13,7 +13,7 @@ services:
     ports:
       - 10022:22
     environment:
-      - CI_STORAGE_HOST_PUBLIC_KEY=${CI_STORAGE_HOST_PUBLIC_KEY_TEST_ONLY?}
+      - CI_STORAGE_HOST_PUBLIC_KEY_EVAL=${CI_STORAGE_HOST_PUBLIC_KEY_EVAL_TEST_ONLY?}
   self-hosted-runner:
     build:
       context: self-hosted-runner
@@ -27,4 +27,4 @@ services:
       - GH_LABELS=${GH_LABELS:-ci-storage}
       - GH_TOKEN
       - CI_STORAGE_HOST=${CI_STORAGE_HOST:-host:22}
-      - CI_STORAGE_HOST_PRIVATE_KEY=${CI_STORAGE_HOST_PRIVATE_KEY_TEST_ONLY?}
+      - CI_STORAGE_HOST_PRIVATE_KEY_EVAL=${CI_STORAGE_HOST_PRIVATE_KEY_EVAL_TEST_ONLY?}

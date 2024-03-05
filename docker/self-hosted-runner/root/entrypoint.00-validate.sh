@@ -21,7 +21,7 @@ if [[ "${CI_STORAGE_HOST:=}" != "" && ! "$CI_STORAGE_HOST" =~ ^([-.[:alnum:]]+@)
   exit 1;
 fi
 
-if [[ "${CI_STORAGE_HOST_PRIVATE_KEY:=}" != "" && "$CI_STORAGE_HOST_PRIVATE_KEY" != *OPENSSH\ PRIVATE\ KEY* ]]; then
-  echo "If CI_STORAGE_HOST_PRIVATE_KEY is passed, it must be an SSH private key.";
+if [[ "${CI_STORAGE_HOST_PRIVATE_KEY_EVAL:=}" != "" && "$CI_STORAGE_HOST_PRIVATE_KEY_EVAL" != *\ * ]]; then
+  echo "If CI_STORAGE_HOST_PRIVATE_KEY_EVAL is passed, it must contain a shell command which prints an SSH private key (e.g. fetched from AWS Secrets Manager or so).";
   exit 1;
 fi
