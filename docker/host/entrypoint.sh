@@ -6,7 +6,7 @@
 set -u -e
 
 if [[ "${CI_STORAGE_HOST_PUBLIC_KEY_EVAL:=}" == "" ]]; then
-  echo "CI_STORAGE_HOST_PUBLIC_KEY_EVAL must be contain a bash script which prints a valid SSH public key (e.g. fetched from AWS Secrets Manager or so)."
+  echo "CI_STORAGE_HOST_PUBLIC_KEY_EVAL must contain a bash script which prints a valid SSH public key (e.g. fetched from AWS Secrets Manager or so)."
   exit 1
 fi
 

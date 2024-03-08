@@ -25,3 +25,13 @@ if [[ "${CI_STORAGE_HOST_PRIVATE_KEY_EVAL:=}" != "" && "$CI_STORAGE_HOST_PRIVATE
   echo "If CI_STORAGE_HOST_PRIVATE_KEY_EVAL is passed, it must contain a shell command which prints an SSH private key (e.g. fetched from AWS Secrets Manager or so).";
   exit 1;
 fi
+
+if [[ "${FORWARD_HOST:=}" != "" && ! "$FORWARD_HOST" =~ ^[-.[:alnum:]]+(:[0-9]+)?$ ]]; then
+  echo "If FORWARD_HOST is passed, it must be in form of host[:port].";
+  exit 1;
+fi
+
+if [[ "${FORWARD_PORTS:=}" != "" && ! "$FORWARD_PORTS" =~ ^([[:space:]]*[0-9]+(/tcp|/udp)?[[:space:]]*)+$ ]]; then
+  echo 'If FORWARD_PORTS is passed, it must be in form of (example): "123 456/udp 789/tcp".';
+  exit 1;
+fi
