@@ -2,14 +2,14 @@ ARG BASE_IMAGE="ubuntu:22.04"
 
 FROM $BASE_IMAGE
 
-ENV CI_STORAGE_HOST_PUBLIC_KEY_EVAL=""
+# SECRET: CI_STORAGE_PUBLIC_KEY
 
 ENV DEBIAN_FRONTEND=noninteractive
 RUN true \
     && apt-get update -y \
     && apt-get install -y --no-install-recommends \
       openssh-server \
-      jq gh rsync python3 rinetd gosu mc git curl wget pv psmisc unzip vim nano telnet net-tools apt-transport-https ca-certificates locales \
+      jq gh rsync python3 rinetd rsyslog systemctl gosu less mc git curl wget pv psmisc unzip vim nano telnet net-tools apt-transport-https ca-certificates locales \
     && sed -i -e "s|#PermitRootLogin.*|PermitRootLogin no|" /etc/ssh/sshd_config \
     && useradd -m user \
     && mkdir -p ~user/.ssh ~user/ci-storage \

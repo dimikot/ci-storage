@@ -11,7 +11,7 @@ if [[ "$FORWARD_HOST" != "" && "$FORWARD_PORTS" != "" ]]; then
     echo "127.0.0.1 $port $FORWARD_HOST $port";
   done > /etc/rinetd.conf
 
-  service rinetd start
+  systemctl start rinetd
 
   echo "Forwarding ports:"
   cat /etc/rinetd.conf

@@ -6,17 +6,17 @@ ARG RUNNER_VERSION="2.314.1"
 ENV GH_REPOSITORY=""
 ENV GH_LABELS=""
 ENV GH_TOKEN=""
-ENV CI_STORAGE_HOST=""
-ENV CI_STORAGE_HOST_PRIVATE_KEY_EVAL=""
 ENV FORWARD_HOST=""
 ENV FORWARD_PORTS=""
+ENV CI_STORAGE_HOST=""
+# SECRET: CI_STORAGE_PRIVATE_KEY
 
 ENV DEBIAN_FRONTEND=noninteractive
 RUN true \
     && apt-get update -y \
     && apt-get install -y --no-install-recommends \
       openssh-client \
-      jq gh rsync python3 rinetd gosu mc git curl wget pv psmisc unzip vim nano telnet net-tools apt-transport-https ca-certificates locales \
+      jq gh rsync python3 rinetd rsyslog systemctl gosu less mc git curl wget pv psmisc unzip vim nano telnet net-tools apt-transport-https ca-certificates locales \
     && useradd -m user
 
 USER user

@@ -12,8 +12,8 @@ services:
       retries: 10
     ports:
       - 10022:22
-    environment:
-      - CI_STORAGE_HOST_PUBLIC_KEY_EVAL=${CI_STORAGE_HOST_PUBLIC_KEY_EVAL_TEST_ONLY?}
+    secrets:
+      - CI_STORAGE_PUBLIC_KEY
   self-hosted-runner:
     build:
       context: self-hosted-runner
@@ -26,7 +26,13 @@ services:
       - GH_REPOSITORY=${GH_REPOSITORY:-dimikot/ci-storage}
       - GH_LABELS=${GH_LABELS:-ci-storage}
       - GH_TOKEN
-      - CI_STORAGE_HOST=${CI_STORAGE_HOST:-host:22}
-      - CI_STORAGE_HOST_PRIVATE_KEY_EVAL=${CI_STORAGE_HOST_PRIVATE_KEY_EVAL_TEST_ONLY?}
-      - FORWARD_HOST=${CI_STORAGE_HOST:-host}
+      - FORWARD_HOST=
       - FORWARD_PORTS=22/tcp
+      - CI_STORAGE_HOST=${CI_STORAGE_HOST:-host:22}
+    secrets:
+      - CI_STORAGE_PRIVATE_KEY
+secrets:
+  CI_STORAGE_PUBLIC_KEY:
+    file: ./test-public-key
+  CI_STORAGE_PRIVATE_KEY:
+    file: ./test-private-key

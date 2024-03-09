@@ -5,22 +5,17 @@
 #
 set -u -e
 
-if [[ "${CI_STORAGE_HOST_PUBLIC_KEY_EVAL:=}" == "" ]]; then
-  echo "CI_STORAGE_HOST_PUBLIC_KEY_EVAL must contain a bash script which prints a valid SSH public key (e.g. fetched from AWS Secrets Manager or so)."
+secret_file=/run/secrets/CI_STORAGE_PUBLIC_KEY
+if [[ ! -f "$secret_file" ]]; then
+  echo "You must pass secret CI_STORAGE_PUBLIC_KEY when using this image."
   exit 1
 fi
 
-authorized_keys_file=~user/.ssh/authorized_keys
-public_key=$(eval "$CI_STORAGE_HOST_PUBLIC_KEY_EVAL")
-if [[ "$public_key" == "" ]]; then
-  echo "CI_STORAGE_HOST_PUBLIC_KEY_EVAL evaluated to an empty string."
-  exit 1
-fi
+cat "$secret_file" > ~user/.ssh/authorized_keys
+chown -R user:user ~user/.ssh
+chmod 600 ~user/.ssh/*
 
-if [[ ! -f $authorized_keys_file ]] || ! grep -qF "$public_key" $authorized_keys_file; then
-  echo "$public_key" >> $authorized_keys_file
-  chown user:user $authorized_keys_file
-fi
+systemctl start rsyslog
 
 mkdir -p /var/run/sshd
 exec /usr/sbin/sshd -D -o ListenAddress=0.0.0.0
