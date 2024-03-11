@@ -22,7 +22,7 @@ cd ~/actions-runner && ./config.sh \
   --unattended \
   --url https://github.com/$GH_REPOSITORY \
   --token "$token" \
-  --name "ci-storage-$(cut -d- -f1 < /proc/sys/kernel/random/uuid)" \
+  --name "ci-storage-$(date '+%Y%m%d-%H%M%S')-$((RANDOM+10000))" \
   --labels "$GH_LABELS"
 
 cleanup() {
