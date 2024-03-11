@@ -1,6 +1,11 @@
 #!/bin/bash
 set -u -e
 
+if [[ "${GH_TOKEN:=}" == "" ]]; then
+  echo "GH_TOKEN must be set.";
+  exit 1;
+fi
+
 if [[ "${GH_REPOSITORY:=}" != */* ]]; then
   echo "GH_REPOSITORY must be set, and the format should be {owner}/{repo}.";
   exit 1;
@@ -8,11 +13,6 @@ fi
 
 if [[ "${GH_LABELS:=}" == "" ]]; then
   echo "GH_LABELS must be set.";
-  exit 1;
-fi
-
-if [[ "${GH_TOKEN:=}" == "" ]]; then
-  echo "GH_TOKEN must be set.";
   exit 1;
 fi
 
@@ -34,4 +34,9 @@ fi
 if [[ "${CI_STORAGE_HOST:=}" != "" && ! -f /run/secrets/CI_STORAGE_PRIVATE_KEY ]]; then
   echo "You must pass secret CI_STORAGE_PRIVATE_KEY when using CI_STORAGE_HOST."
   exit 1
+fi
+
+if [[ "${DEBUG_SHUTDOWN_DELAY_SEC:=}" != "" && ! "$DEBUG_SHUTDOWN_DELAY_SEC" =~ ^[0-9]+$ ]]; then
+  echo "If DEBUG_SHUTDOWN_DELAY_SEC is passed, it must be a number.";
+  exit 1;
 fi

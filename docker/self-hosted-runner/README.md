@@ -9,14 +9,17 @@ self-hosted runners as you want. An example scenario:
 2. Run an AWS cluster (with e.g. spot instances with manual docker container
    boot) and use the image you just published. Configure its environment
    variables and secrets accordingly: 
-   - `GH_REPOSITORY`: the repository this runner will serve.
-   - `GH_LABELS`: labels added to this runner
    - `GH_TOKEN`: PAT used to register the runner at github.com
+   - `GH_REPOSITORY`: the repository this runner will serve
+   - `GH_LABELS`: labels added to this runner
    - `FORWARD_HOST`: some ports at localhost will be rinetd-forwarded to this host (optional)
    - `FORWARD_PORTS`: the list of forwarded ports (optional)
    - `CI_STORAGE_HOST`: the host which the initial ci-storage run will pull the
      data from (optional)
-   - Pass secret `CI_STORAGE_PRIVATE_KEY`: SSH private key needed to access
+   - `DEBUG_SHUTDOWN_DELAY_SEC`: a debug feature to test, how much time does the
+     orchestrator give the container to gracefully shutdown before killing the
+     container
+   - pass the secret `CI_STORAGE_PRIVATE_KEY`: SSH private key needed to access
      CI_STORAGE_HOST without a password.
 3. Set up auto-scaling rules based on e.g. the containers' CPU usage. The
    running containers are safe to shut down at anytime if it's done gracefully

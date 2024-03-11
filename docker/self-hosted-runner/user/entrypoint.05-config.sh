@@ -26,18 +26,32 @@ cd ~/actions-runner && ./config.sh \
   --labels "$GH_LABELS"
 
 cleanup() {
+  echo "Received graceful shutdown signal..."
+
+  # A debug facility to test, how much time does the orchestrator give the
+  # container to gracefully shutdown before killing it.
+  if [[ "$DEBUG_SHUTDOWN_DELAY_SEC" != "" ]]; then
+    echo "Artificially delaying shutdown for $DEBUG_SHUTDOWN_DELAY_SEC second(s)..."
+    count=0
+    while [[ $count -lt "$DEBUG_SHUTDOWN_DELAY_SEC" ]]; do
+      sleep 1
+      count=$((count + 1))
+      echo "  ...$count seconds elapsed"
+    done
+  fi
+  
   # Retry deleting the runner until it succeeds.
   # - Busy runner fails in deletion, so we can retry safely until it becomes
   #   idle and is successfully deleted.
   # - In case we can't delete the runner for a long time still, the extrnal
   #   orchestrator will eventually kill the container after a large timeout
   #   (say, 15 minutes or so) needed for a running job to finish.
-  echo "Received graceful shutdown signal, removing the runner..."
+  echo "Removing the runner..."
   while :; do
     token=$(gh api -X POST --jq .token "repos/$GH_REPOSITORY/actions/runners/remove-token")
     cd ~/actions-runner && ./config.sh remove --token "$token" && break
     sleep 5
-    echo "Retrying removal till the runner becomes idle and it succeeds..."
+    echo "Retrying till the runner becomes idle and the removal succeeds..."
   done
 }
 

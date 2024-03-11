@@ -23,12 +23,13 @@ services:
       host:
         condition: service_healthy
     environment:
+      - GH_TOKEN
       - GH_REPOSITORY=${GH_REPOSITORY:-dimikot/ci-storage}
       - GH_LABELS=${GH_LABELS:-ci-storage}
-      - GH_TOKEN
-      - FORWARD_HOST=
-      - FORWARD_PORTS=22/tcp
+      - FORWARD_HOST=${FORWARD_HOST:-}
+      - FORWARD_PORTS=${FORWARD_PORT:-22/tcp}
       - CI_STORAGE_HOST=${CI_STORAGE_HOST:-host:22}
+      - DEBUG_SHUTDOWN_DELAY_SEC=${DEBUG_SHUTDOWN_DELAY_SEC:-1}
     secrets:
       - CI_STORAGE_PRIVATE_KEY
 secrets:
