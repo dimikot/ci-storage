@@ -17,13 +17,23 @@
 #
 set -u -e
 
+cd ~/actions-runner
+
+name=$(cat .name 2>/dev/null || true)
+if [[ "$name" == "" ]]; then
+  name="ci-storage-$(date '+%Y%m%d-%H%M%S')-$((RANDOM+10000))"
+  echo "$name" > .name
+fi
+
+rm -f .runner
 token=$(gh api -X POST --jq .token "repos/$GH_REPOSITORY/actions/runners/registration-token")
-cd ~/actions-runner && ./config.sh \
+./config.sh \
   --unattended \
-  --url https://github.com/$GH_REPOSITORY \
+  --url "https://github.com/$GH_REPOSITORY" \
   --token "$token" \
-  --name "ci-storage-$(date '+%Y%m%d-%H%M%S')-$((RANDOM+10000))" \
-  --labels "$GH_LABELS"
+  --name "$name" \
+  --labels "$GH_LABELS" \
+  --replace
 
 cleanup() {
   echo "Received graceful shutdown signal..."
@@ -39,7 +49,7 @@ cleanup() {
       echo "  ...$count seconds elapsed"
     done
   fi
-  
+
   # Retry deleting the runner until it succeeds.
   # - Busy runner fails in deletion, so we can retry safely until it becomes
   #   idle and is successfully deleted.
