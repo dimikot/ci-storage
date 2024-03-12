@@ -36,7 +36,7 @@ token=$(gh api -X POST --jq .token "repos/$GH_REPOSITORY/actions/runners/registr
   --replace
 
 cleanup() {
-  echo "Received graceful shutdown signal..."
+  echo "Received graceful shutdown signal $1..."
 
   # A debug facility to test, how much time does the orchestrator give the
   # container to gracefully shutdown before killing it.
@@ -65,5 +65,5 @@ cleanup() {
   done
 }
 
-trap "cleanup; exit 130" INT
-trap "cleanup; exit 143" TERM
+trap "cleanup SIGINT; exit 130" INT
+trap "cleanup SIGHUP; exit 143" TERM
