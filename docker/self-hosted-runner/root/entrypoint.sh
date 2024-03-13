@@ -1,4 +1,7 @@
 #!/bin/bash
+#
+# Includes all entrypoint.*.sh scripts and then runs the user's entrypoint.sh.
+#
 set -u -e
 
 if [[ "$(whoami)" != root ]]; then

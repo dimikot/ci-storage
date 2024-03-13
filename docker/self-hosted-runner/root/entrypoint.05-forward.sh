@@ -1,4 +1,7 @@
 #!/bin/bash
+#
+# Sets up port forwarding to the storage host.
+#
 set -u -e
 
 if [[ "$FORWARD_HOST" == "" ]]; then

@@ -1,4 +1,7 @@
 #!/bin/bash
+#
+# Removes other offline runners after a short delay.
+#
 set -u -e
 
 runner_ids() {
@@ -8,7 +11,7 @@ runner_ids() {
     --paginate
 }
 
-remove_offline() {
+remove_offline_loop() {
   # Make sure we don't delete newly created runners, after they are registered,
   # but before they become online. I.e. we delete only runners which remain
   # offline for at least some time.
@@ -24,4 +27,4 @@ remove_offline() {
   done
 }
 
-remove_offline &
+remove_offline_loop &

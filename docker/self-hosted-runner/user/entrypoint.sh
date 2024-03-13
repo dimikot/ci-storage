@@ -1,4 +1,7 @@
 #!/bin/bash
+#
+# Includes all entrypoint.*.sh scripts.
+#
 set -u -e
 
 if [[ "$(whoami)" != user ]]; then

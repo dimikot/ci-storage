@@ -1,4 +1,7 @@
 #!/bin/bash
+#
+# Validates environment variables.
+#
 set -u -e
 
 if [[ "${GH_TOKEN:=}" == "" ]]; then

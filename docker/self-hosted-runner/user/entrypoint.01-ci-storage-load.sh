@@ -1,4 +1,7 @@
 #!/bin/bash
+#
+# Loads the initial content of work directory from ci-storage host.
+#
 set -u -e
 
 echo "$CI_STORAGE_HOST" > ci-storage-host

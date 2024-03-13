@@ -1,4 +1,7 @@
 #!/bin/bash
+#
+# Puts SSH keys into the user's home directory.
+#
 set -u -e
 
 secret_file=/run/secrets/CI_STORAGE_PRIVATE_KEY

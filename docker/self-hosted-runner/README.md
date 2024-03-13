@@ -8,7 +8,7 @@ self-hosted runners as you want. An example scenario:
    may make sense to extend the base image with your own commands.
 2. Run an AWS cluster (with e.g. spot instances with manual docker container
    boot) and use the image you just published. Configure its environment
-   variables and secrets accordingly: 
+   variables and secrets accordingly:
    - `GH_TOKEN`: PAT used to register the runner at github.com
    - `GH_REPOSITORY`: the repository this runner will serve
    - `GH_LABELS`: labels added to this runner

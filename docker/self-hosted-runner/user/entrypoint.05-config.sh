@@ -1,5 +1,7 @@
 #!/bin/bash
 #
+# Configures self-hosted runner and sets up graceful shutdown handling.
+#
 # Here we make an opinionated decision to NOT use ephemeral or jit acton
 # runners. Reasons:
 # - We WANT to reuse the work directory across job runs, that's the whole point
