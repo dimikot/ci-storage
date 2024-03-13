@@ -2,7 +2,7 @@
 #
 # Publishes CloudWatch metrics for auto-scaling.
 # - ActiveRunnersPercent: percentage of active runners
-# - IdleRunnersCountNegative: count of idle runners multiplied by -1
+# - IdleRunnersCountInverse: 1000000 minus "count of idle runners"
 #
 set -u -e
 
@@ -40,11 +40,11 @@ cloudwatch_loop() {
     all_runner_count=$(echo "$all_runners_ids" | wc -w)
 
     ActiveRunnersPercent=$(("$all_runner_count" == 0 ? 100 : 100 * "$active_runner_count" / "$all_runner_count"))
-    IdleRunnersCountNegative=$((-1 * "$idle_runner_count"))
+    IdleRunnersCountInverse=$((1000000 - "$idle_runner_count"))
 
     if [[ "$REGION" != "" ]]; then
       suffix="publishing to CloudWatch"
-      for metric in ActiveRunnersPercent IdleRunnersCountNegative; do
+      for metric in ActiveRunnersPercent IdleRunnersCountInverse; do
         aws cloudwatch put-metric-data \
           --metric-name="$metric" \
           --namespace="$NAMESPACE" \
@@ -58,7 +58,7 @@ cloudwatch_loop() {
     else
       suffix="AWS metadata service is not available, so not publishing"
     fi
-    echo "ActiveRunnersPercent=$ActiveRunnersPercent, IdleRunnersCountNegative=$IdleRunnersCountNegative ($suffix)"
+    echo "ActiveRunnersPercent=$ActiveRunnersPercent, IdleRunnersCountInverse=$IdleRunnersCountInverse ($suffix)"
   done
 }
 

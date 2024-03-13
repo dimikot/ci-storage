@@ -23,7 +23,11 @@ cd ~/actions-runner
 
 name=$(cat .name 2>/dev/null || true)
 if [[ "$name" == "" ]]; then
-  name="ci-storage-$(date '+%Y%m%d-%H%M%S')-$((RANDOM+10000))"
+  instance_suffix=$(aws_metadata_curl latest/meta-data/instance-id)
+  if [[ "$instance_suffix" != "" ]]; then
+    instance_suffix="${instance_suffix}-"
+  fi
+  name="ci-storage-$instance_suffix$(date '+%Y%m%d-%H%M%S')-$((RANDOM+10000))"
   echo "$name" > .name
 fi
 
