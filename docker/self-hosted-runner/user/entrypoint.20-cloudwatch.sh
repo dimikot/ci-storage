@@ -31,20 +31,23 @@ cloudwatch_loop() {
     active_runner_ids=$(
         echo "$runners" | jq -r 'select((.name | startswith("ci-storage-")) and (.busy == true) and (.status == "online")) | {id} | .[]'
     )
-    all_runners_ids=$(
+    all_runner_ids=$(
         echo "$runners" | jq -r '{id} | .[]'
     )
 
-    idle_runner_count=$(echo "$idle_runner_ids" | wc -w)
-    active_runner_count=$(echo "$active_runner_ids" | wc -w)
-    all_runner_count=$(echo "$all_runners_ids" | wc -w)
+    IdleRunnersCount=$(echo "$idle_runner_ids" | wc -w)
+    ActiveRunnersCount=$(echo "$active_runner_ids" | wc -w)
+    AllRunnersCount=$(echo "$all_runner_ids" | wc -w)
+    # shellcheck disable=SC2034
+    ActiveRunnersPercent=$(("$AllRunnersCount" == 0 ? 100 : 100 * "$ActiveRunnersCount" / "$AllRunnersCount"))
+    # shellcheck disable=SC2034
+    IdleRunnersCountInverse=$((1000000 - "$IdleRunnersCount"))
 
-    ActiveRunnersPercent=$(("$all_runner_count" == 0 ? 100 : 100 * "$active_runner_count" / "$all_runner_count"))
-    IdleRunnersCountInverse=$((1000000 - "$idle_runner_count"))
-
-    if [[ "$REGION" != "" ]]; then
-      suffix="publishing to CloudWatch"
-      for metric in ActiveRunnersPercent IdleRunnersCountInverse; do
+    out=()
+    for metric in IdleRunnersCount ActiveRunnersCount AllRunnersCount ActiveRunnersPercent IdleRunnersCountInverse; do
+      out+=("$metric=${!metric}")
+      if [[ "$REGION" != "" ]]; then
+        suffix="publishing to CloudWatch"
         aws cloudwatch put-metric-data \
           --metric-name="$metric" \
           --namespace="$NAMESPACE" \
@@ -54,11 +57,12 @@ cloudwatch_loop() {
           --dimensions="GH_REPOSITORY=$GH_REPOSITORY" \
           --region="$REGION" \
           || true
-      done
-    else
-      suffix="AWS metadata service is not available, so not publishing"
-    fi
-    echo "ActiveRunnersPercent=$ActiveRunnersPercent, IdleRunnersCountInverse=$IdleRunnersCountInverse ($suffix)"
+      else
+        suffix="AWS metadata service is not available, so not publishing"
+      fi
+    done
+
+    echo "${out[*]} ($suffix)"
   done
 }
 
