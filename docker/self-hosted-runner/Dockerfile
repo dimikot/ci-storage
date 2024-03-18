@@ -18,7 +18,7 @@ RUN true \
     && apt-get install -y --no-install-recommends \
       openssh-client \
       awscli \
-      jq gh rsync python3 rinetd rsyslog systemctl gosu less mc git curl wget pv psmisc unzip vim nano telnet net-tools apt-transport-https ca-certificates locales \
+      jq gh rsync python3 rinetd rsyslog systemctl gosu less mc git curl wget pv psmisc unzip vim nano telnet net-tools apt-transport-https ca-certificates locales gnupg \
     && useradd -m user
 
 USER user
