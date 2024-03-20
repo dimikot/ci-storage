@@ -11,6 +11,8 @@ services:
       retries: 10
     ports:
       - 10022:22
+    environment:
+      - TZ=${TZ:-}
     secrets:
       - CI_STORAGE_PUBLIC_KEY
   self-hosted-runner:
@@ -28,6 +30,7 @@ services:
       - FORWARD_HOST=${FORWARD_HOST:-}
       - FORWARD_PORTS=${FORWARD_PORT:-22/tcp}
       - CI_STORAGE_HOST=${CI_STORAGE_HOST:-host:22}
+      - TZ=${TZ:-}
       - DEBUG_SHUTDOWN_DELAY_SEC=${DEBUG_SHUTDOWN_DELAY_SEC:-1}
     secrets:
       - CI_STORAGE_PRIVATE_KEY
