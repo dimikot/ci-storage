@@ -5,5 +5,5 @@ See nested README.md files.
 To build the containers and run/test them locally/manually:
 
 ```
-./compose-up.sh
+./compose-up-dev.sh
 ```
