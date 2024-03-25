@@ -48,7 +48,7 @@ RUN true \
 # We want the default user to be root, to allow people extend the image with no
 # boilerplate. But when someone runs e.g. "docker compose exec bash -l", we want
 # the user to be "user".
-RUN echo "cd ~user && gosu user:user bash" > ~/.bash_profile
+RUN echo "cd ~user && gosu user:user bash -l" > ~/.bash_profile
 
 ADD --chmod=755 https://raw.githubusercontent.com/dimikot/ci-storage/main/ci-storage /usr/bin/ci-storage
 COPY --chmod=755 --chown=root:root root/entrypoint*.sh /root
