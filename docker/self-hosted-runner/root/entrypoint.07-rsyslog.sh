@@ -4,4 +4,4 @@
 #
 set -u -e
 
-systemctl start rsyslog
+systemctl start rsyslog || true

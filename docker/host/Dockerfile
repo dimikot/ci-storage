@@ -10,7 +10,7 @@ RUN true \
     && apt-get update -y \
     && apt-get install -y --no-install-recommends \
       openssh-server \
-      jq gh rsync python3 rinetd rsyslog systemctl tzdata gosu less mc git curl wget pv psmisc unzip vim nano telnet net-tools apt-transport-https ca-certificates locales gnupg \
+      jq gh rsync python3 rsyslog systemctl tzdata gosu less mc git curl wget pv psmisc unzip vim nano telnet net-tools apt-transport-https ca-certificates locales gnupg \
     && sed -i -e "s|#PermitRootLogin.*|PermitRootLogin no|" /etc/ssh/sshd_config \
     && useradd -m user \
     && mkdir -p ~user/.ssh ~user/ci-storage \

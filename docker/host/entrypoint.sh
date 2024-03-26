@@ -15,7 +15,7 @@ cat "$secret_file" > ~user/.ssh/authorized_keys
 chown -R user:user ~user/.ssh
 chmod 600 ~user/.ssh/*
 
-systemctl start rsyslog
+systemctl start rsyslog || true
 
 mkdir -p /var/run/sshd
 exec /usr/sbin/sshd -D -o ListenAddress=0.0.0.0

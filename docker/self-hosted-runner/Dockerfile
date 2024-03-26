@@ -18,8 +18,8 @@ RUN true \
     && apt-get update -y \
     && apt-get install -y --no-install-recommends \
       openssh-client \
-      awscli build-essential \
-      jq gh rsync python3 rinetd rsyslog systemctl tzdata gosu less mc git curl wget pv psmisc unzip vim nano telnet net-tools apt-transport-https ca-certificates locales gnupg \
+      awscli build-essential haproxy rinetd \
+      jq gh rsync python3 rsyslog systemctl tzdata gosu less mc git curl wget pv psmisc unzip vim nano telnet net-tools apt-transport-https ca-certificates locales gnupg \
     && useradd -m user
 
 USER user
