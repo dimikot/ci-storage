@@ -63,6 +63,17 @@ ones, so rsync can run efficiently.
     # Default: empty
     exclude: ''
 
+    # If set, the final directory on the storage host will be
+    # {storage-dir}/{owner}/{repo}.{layer-name}, plus deletion will be turned
+    # off on load.
+    # Default: empty
+    layer-name: ''
+
+    # Newline-separated include pattern(s) for rsync. If set, only the files
+    # matching the patterns will be transferred. Implies setting layer-name.
+    # Default: empty
+    layer-include: ''
+
     # If set, prints the list of transferred files.
     # Default: false
     verbose: ''
