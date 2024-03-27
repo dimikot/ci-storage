@@ -22,8 +22,8 @@ if [[ "$FORWARD_HOST" != "" && "$FORWARD_PORTS" != "" ]]; then
     else
       tcp_lines+=("listen ${proto}_${port}")
       tcp_lines+=("  bind 127.0.0.1:$port")
+      tcp_lines+=("  server server1 $FORWARD_HOST:$port resolvers res")
       tcp_lines+=("  mode $proto")
-      tcp_lines+=("  server server1 $FORWARD_HOST:$port")
     fi
   done
 
@@ -35,12 +35,15 @@ if [[ "$FORWARD_HOST" != "" && "$FORWARD_PORTS" != "" ]]; then
     section="# forward"
     (
       sed -e "/^$section/,\$d" -e "/httplog/d" $config
-      printf '%s\n' "$section" "${tcp_lines[@]}"
+      echo "$section"
+      echo "resolvers res"
+      echo "  parse-resolv-conf"
+      echo "  hold valid 10s"
+      printf '%s\n' "${tcp_lines[@]}"
     ) > $config.new
     mv -f $config.new $config
     echo "haproxy:"
     sed -e "1,/^$section/d" -e "s/^/  /" $config
-    service haproxy start &>/dev/null || true # it's in /etc/init.d/, so starting with "service"
   fi
 
   # Rinetd is super-slow, so we use it only for UDP.
@@ -49,8 +52,15 @@ if [[ "$FORWARD_HOST" != "" && "$FORWARD_PORTS" != "" ]]; then
     printf '%s\n' "${udp_lines[@]}" > $config
     echo "rinetd:"
     sed -e "s/^/  /" $config
-    systemctl start rinetd || true
   fi
 
   echo
+
+  if [[ ${#tcp_lines[@]} != 0 ]]; then
+    /etc/init.d/haproxy start || true
+    echo
+  fi
+  if [[ ${#udp_lines[@]} != 0 ]]; then
+    systemctl start rinetd || true
+  fi
 fi

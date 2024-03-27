@@ -13,7 +13,7 @@ overwrite):
 ```
 git pull --rebase
 git tag v1 --force
-git push --tags --force 
+git push --tags --force
 ```
 
 Then open https://github.com/dimikot/ci-storage/releases/edit/v1 and click
