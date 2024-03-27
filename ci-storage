@@ -2,14 +2,14 @@
 from __future__ import annotations
 
 import argparse
+import os.path
 import re
 import shlex
 import subprocess
 import sys
 import textwrap
-import typing
 import time
-import os.path
+import typing
 
 STORAGE_MAX_AGE_SEC_DEFAULT = 3600 * 4
 STORAGE_MAX_AGE_SEC_BAK = 60
@@ -90,6 +90,13 @@ def main():
         help="exclude pattern(s) for rsync",
     )
     parser.add_argument(
+        "--layer",
+        type=str,
+        default=[],
+        action="append",
+        help="include pattern(s) for rsync; if set, only the matching files will be transferred; empty directories will be ignored; deletion will be turned off on load",
+    )
+    parser.add_argument(
         "--verbose",
         default=False,
         action="store_true",
@@ -112,6 +119,9 @@ def main():
     exclude: list[str] = [
         line for line in "\n".join(args.exclude).splitlines() if line.strip()
     ]
+    layer: list[str] = [
+        line for line in "\n".join(args.layer).splitlines() if line.strip()
+    ]
     verbose: bool = args.verbose
 
     if storage_host:
@@ -131,6 +141,7 @@ def main():
             slot_id=slot_id,
             local_dir=local_dir,
             exclude=exclude,
+            layer=layer,
             verbose=verbose,
         )
         action_maintenance(
@@ -145,6 +156,7 @@ def main():
             slot_id=slot_id,
             local_dir=local_dir,
             exclude=exclude,
+            layer=layer,
             verbose=verbose,
         )
 
@@ -160,12 +172,16 @@ def action_store(
     slot_id: str,
     local_dir: str,
     exclude: list[str],
+    layer: list[str],
     verbose: bool,
 ):
     if slot_id == "*" or slot_id == "?":
         raise UserException(f'slot_id="{slot_id}" is not allowed for "store" action')
     slot_id = normalize_slot_id(slot_id)
-    slot_ids_and_ages = list_slots(storage_host=storage_host, storage_dir=storage_dir)
+    slot_ids_and_ages = list_slots(
+        storage_host=storage_host,
+        storage_dir=storage_dir,
+    )
     slot_id_recent = slot_ids_and_ages[0][0] if len(slot_ids_and_ages) else None
     slot_id_tmp = f"{slot_id}.tmp.{int(time.time())}"
     host, port = parse_host_port(storage_host)
@@ -174,13 +190,16 @@ def action_store(
             "rsync",
             *(["-e", shlex.join(build_ssh_cmd(port=port))] if storage_host else []),
             "-a",
-            "--delete",
             "--partial",
             "--inplace",
             "--stats",
             *([f"--link-dest=../{slot_id_recent}/"] if slot_id_recent else []),
-            *[f"--exclude={pattern}" for pattern in exclude],
-            *(["-v"] if verbose else []),
+            *build_rsync_include_exclude(
+                action="store",
+                exclude=exclude,
+                layer=layer,
+                verbose=verbose,
+            ),
             f"{local_dir}/",
             (f"{host}:" if storage_host else "") + f"{storage_dir}/{slot_id_tmp}/",
         ],
@@ -207,11 +226,13 @@ def action_load(
     slot_id: str,
     local_dir: str,
     exclude: list[str],
+    layer: list[str],
     verbose: bool,
 ):
     if slot_id == "*" or slot_id == "?":
         slot_ids_and_ages = list_slots(
-            storage_host=storage_host, storage_dir=storage_dir
+            storage_host=storage_host,
+            storage_dir=storage_dir,
         )
         if len(slot_ids_and_ages) == 0:
             if slot_id == "?":
@@ -230,12 +251,15 @@ def action_load(
             "rsync",
             *(["-e", shlex.join(build_ssh_cmd(port=port))] if storage_host else []),
             "-a",
-            "--delete",
             "--partial",
             "--stats",
             "--human-readable",
-            *[f"--exclude={pattern}" for pattern in exclude],
-            *(["-v"] if verbose else []),
+            *build_rsync_include_exclude(
+                action="load",
+                exclude=exclude,
+                layer=layer,
+                verbose=verbose,
+            ),
             (f"{host}:" if storage_host else "") + f"{storage_dir}/{slot_id}/",
             f"{local_dir}/",
         ],
@@ -273,7 +297,9 @@ def list_slots(
 ) -> list[tuple[str, int]]:
     slot_ids_and_ages: list[tuple[str, int]] = []
     lines = check_output_script(
-        host=storage_host, script=SCRIPTS["LIST_SLOTS"], args=[storage_dir]
+        host=storage_host,
+        script=SCRIPTS["LIST_SLOTS"],
+        args=[storage_dir],
     )
     for line in lines.splitlines():
         match = re.match(r"^([^.]+) (\d+)$", line)
@@ -386,6 +412,33 @@ def build_ssh_cmd(
         "-oStrictHostKeyChecking=no",
         "-oUserKnownHostsFile=/dev/null",
         "-oLogLevel=error",
+    ]
+
+
+#
+# Builds some of rsync options related to filles inclusion/exclusion.
+#
+def build_rsync_include_exclude(
+    *,
+    action: typing.Literal["store", "load"],
+    exclude: list[str],
+    layer: list[str],
+    verbose: bool,
+) -> list[str]:
+    return [
+        *([] if layer and action == "load" else ["--delete"]),
+        *(["-vv"] if verbose and layer else ["-v"] if verbose else []),
+        *[f"--exclude={pattern}" for pattern in exclude],
+        *(
+            [
+                "--include=*/",
+                *[f"--include={pattern}" for pattern in layer],
+                "--exclude=*",
+            ]
+            if layer and layer != ["*"]
+            else []
+        ),
+        *(["--prune-empty-dirs"] if layer and action == "store" else []),
     ]
 
 
