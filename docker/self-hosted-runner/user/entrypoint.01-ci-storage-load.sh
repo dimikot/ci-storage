@@ -13,7 +13,7 @@ if [[ "$CI_STORAGE_HOST" != "" ]]; then
   ci-storage load \
     --storage-host="$CI_STORAGE_HOST" \
     --storage-dir="~/ci-storage/$GH_REPOSITORY" \
-    --slot-id="?" \
+    --slot-id="*" \
     --local-dir="$local_dir"
 fi
 

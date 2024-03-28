@@ -17,7 +17,7 @@ inputs:
     description: "Remove slots created earlier than this many seconds ago. If not set, uses the ci-storage tool default 4 hours."
     required: false
   slot-id:
-    description: 'Id of the slot to store to or load from; use "*" to load a random most recent slot; use "?" to load a random most recent slot and skip if it does not exist. If empty, uses "$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT" value.'
+    description: 'Id of the slot to store to or load from; use "*" to load a random most recent slot and skip if it does not exist. If empty, uses "$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT" value.'
     required: false
   local-dir:
     description: 'Local directory path to store from or load to. If not set, uses "." (the current work directory).'
