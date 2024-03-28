@@ -17,8 +17,13 @@ RUN true \
     && chown -R user:user ~user \
     && chmod 700 ~user/.ssh
 
-COPY --chmod=755 entrypoint.sh /
+# We want the default user to be root, to allow people extend the image with no
+# boilerplate. But when someone runs e.g. "docker compose exec bash -l", we want
+# the user to be "user".
+RUN echo "cd ~user && gosu user:user bash -l" > ~/.bash_profile
 
-WORKDIR /
+COPY --chmod=755 --chown=root:root entrypoint*.sh /root
+
+WORKDIR /root
 EXPOSE 22/tcp
-ENTRYPOINT ["/entrypoint.sh"]
+ENTRYPOINT ["/root/entrypoint.sh"]

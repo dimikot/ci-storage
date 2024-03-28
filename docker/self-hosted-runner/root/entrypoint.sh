@@ -5,8 +5,8 @@
 set -u -e
 
 if [[ "$(whoami)" != root ]]; then
-  echo 'This script must be run as "root" user.';
-  exit 1;
+  echo 'This script must be run as "root" user.'
+  exit 1
 fi
 
 cd /
