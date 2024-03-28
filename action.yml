@@ -41,6 +41,7 @@ runs:
       run: |
         exec 2>&1; set -e -o xtrace
         pwd
+        date
         storage_host="${{ inputs.storage-host || '' }}"
         if [[ "$storage_host" == "" ]]; then
           storage_host=$(cat ~/ci-storage-host)

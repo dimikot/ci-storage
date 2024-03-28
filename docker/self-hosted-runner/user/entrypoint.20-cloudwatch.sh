@@ -62,7 +62,7 @@ cloudwatch_loop() {
       fi
     done
 
-    echo "${out[*]} ($suffix)"
+    echo "$(nice_date): ${out[*]} ($suffix)"
   done
 }
 

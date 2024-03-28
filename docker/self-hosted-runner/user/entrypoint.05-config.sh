@@ -23,11 +23,14 @@ cd ~/actions-runner
 
 name=$(cat .name 2>/dev/null || true)
 if [[ "$name" == "" ]]; then
-  instance_suffix=$(aws_metadata_curl latest/meta-data/instance-id)
-  if [[ "$instance_suffix" != "" ]]; then
-    instance_suffix="${instance_suffix}-"
+  name_prefix="ci-storage"
+  instance_id=$(aws_metadata_curl latest/meta-data/instance-id)
+  if [[ "$instance_id" != "" ]]; then
+    hash="${instance_id##i-}"
+    name="$name_prefix-${hash:0:8}-$(date '+%m%d-%H%M')"
+  else
+    name="$name_prefix-$(date '+%Y%m%d-%H%M%S')-$((RANDOM+10000))"
   fi
-  name="ci-storage-$instance_suffix$(date '+%Y%m%d-%H%M%S')-$((RANDOM+10000))"
   echo "$name" > .name
 fi
 
@@ -42,7 +45,7 @@ token=$(gh api -X POST --jq .token "repos/$GH_REPOSITORY/actions/runners/registr
   --replace
 
 cleanup() {
-  echo "Received graceful shutdown signal $1..."
+  echo "$(nice_date): Received graceful shutdown signal $1..."
 
   # A debug facility to test, how much time does the orchestrator give the
   # container to gracefully shutdown before killing it.
@@ -67,7 +70,7 @@ cleanup() {
     token=$(gh api -X POST --jq .token "repos/$GH_REPOSITORY/actions/runners/remove-token")
     cd ~/actions-runner && ./config.sh remove --token "$token" && break
     sleep 5
-    echo "Retrying till the runner becomes idle and the removal succeeds..."
+    echo "$(nice_date): Retrying till the runner becomes idle and the removal succeeds..."
   done
 }
 

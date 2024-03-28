@@ -22,3 +22,14 @@ aws_metadata_curl() {
     curl -s -m $timeout_sec -H "X-aws-ec2-metadata-token: $token" "$@" "http://169.254.169.254/$path" || true
   fi
 }
+
+# Prints the current date in the same format as the GitHub Actions runner does.
+nice_date() {
+  date +"%Y-%m-%d %H:%M:%S %Z"
+}
+
+export -f aws_metadata_curl
+export -f nice_date
+
+nice_date
+echo
