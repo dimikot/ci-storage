@@ -34,6 +34,8 @@ services:
       - DEBUG_SHUTDOWN_DELAY_SEC=${DEBUG_SHUTDOWN_DELAY_SEC:-1}
     secrets:
       - CI_STORAGE_PRIVATE_KEY
+    tmpfs:
+      - /home/user/actions-runner/_work:exec
 secrets:
   CI_STORAGE_PUBLIC_KEY:
     file: ./test-public-key
