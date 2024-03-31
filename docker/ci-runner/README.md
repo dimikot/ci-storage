@@ -12,7 +12,8 @@ self-hosted runners as you want. An example scenario:
    - `GH_TOKEN`: PAT used to register the runner at github.com
    - `GH_REPOSITORY`: the repository this runner will serve
    - `GH_LABELS`: labels added to this runner
-   - `FORWARD_HOST`: some ports at localhost will be rinetd-forwarded to this host (optional)
+   - `FORWARD_HOST`: some ports at localhost will be forwarded to this host
+     (optional)
    - `FORWARD_PORTS`: the list of forwarded ports (optional)
    - `CI_STORAGE_HOST`: the host which the initial ci-storage run will pull the
      data from (optional)
@@ -40,16 +41,16 @@ different repositories, boot different containers.
 We also expose a naming convention on extra entrypoint files to be possibly
 defined in your own derived Dockerfile. When extending this image, one can put
 custom files like `/root/entrypoint.*.sh` (to be run as root) or
-`/home/user/entrypoint.*.sh` (to be run as user `user`). Those files will be
+`/home/guest/entrypoint.*.sh` (to be run as `guest`). Those files will be
 automatically picked up and executed.
 
 To enter the container, run e.g.:
 
 ```
-docker compose exec self-hosted-runner bash -l
+docker compose exec runner bash -l
 ```
 
-It will automatically change the user and current directory to `/home/user`
+It will automatically change the user and current directory to `/home/guest`
 (without `-l`, it will run a root shell session).
 
 See also https://github.com/dimikot/ci-storage

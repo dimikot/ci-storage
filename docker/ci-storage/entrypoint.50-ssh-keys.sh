@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# Puts SSH keys into the user's home directory.
+# Puts SSH keys into the guest's home directory.
 #
 set -u -e
 
@@ -10,6 +10,6 @@ if [[ ! -f "$secret_file" ]]; then
   exit 1
 fi
 
-cat "$secret_file" > ~user/.ssh/authorized_keys
-chown -R user:user ~user/.ssh
-chmod 600 ~user/.ssh/*
+cat "$secret_file" > ~guest/.ssh/authorized_keys
+chown -R guest:guest ~guest/.ssh
+chmod 600 ~guest/.ssh/*

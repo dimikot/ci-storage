@@ -1,7 +1,7 @@
 services:
-  host:
+  ci-storage:
     build:
-      context: host
+      context: ci-storage
       dockerfile: Dockerfile
     stop_grace_period: 1m
     healthcheck:
@@ -15,13 +15,15 @@ services:
       - TZ=${TZ:-}
     secrets:
       - CI_STORAGE_PUBLIC_KEY
-  self-hosted-runner:
+    tmpfs:
+      - /mnt:exec
+  ci-runner:
     build:
-      context: self-hosted-runner
+      context: ci-runner
       dockerfile: Dockerfile
     stop_grace_period: 1m
     depends_on:
-      host:
+      ci-storage:
         condition: service_healthy
     environment:
       - GH_TOKEN
@@ -29,13 +31,13 @@ services:
       - GH_LABELS=${GH_LABELS:-ci-storage}
       - FORWARD_HOST=${FORWARD_HOST:-}
       - FORWARD_PORTS=${FORWARD_PORT:-22/tcp 8125/udp}
-      - CI_STORAGE_HOST=${CI_STORAGE_HOST:-host:22}
+      - CI_STORAGE_HOST=${CI_STORAGE_HOST:-ci-storage:22}
       - TZ=${TZ:-}
       - DEBUG_SHUTDOWN_DELAY_SEC=${DEBUG_SHUTDOWN_DELAY_SEC:-1}
     secrets:
       - CI_STORAGE_PRIVATE_KEY
     tmpfs:
-      - /home/user/actions-runner/_work:exec
+      - /mnt:exec
 secrets:
   CI_STORAGE_PUBLIC_KEY:
     file: ./test-public-key

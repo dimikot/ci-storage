@@ -1,4 +1,4 @@
-name: "CI Full Run"
+name: CI Full Run
 on:
   pull_request:
     branches:
@@ -26,10 +26,12 @@ jobs:
         uses: ./
         with:
           action: store
+          storage-dir: ~/mnt
       - name: Test store (layer)
         uses: ./
         with:
           action: store
+          storage-dir: ~/mnt
           layer-name: my-layer
           layer-include: layer.txt
       - name: Remove dummy file
@@ -38,10 +40,11 @@ jobs:
         uses: ./
         with:
           action: load
+          storage-dir: ~/mnt
       - name: Check that dummy.txt was restored
         run: |
           set -e
-          ls -la ~/ci-storage/dimikot/ci-storage
+          ls -la ~/mnt/${{ github.repository }}
           [[ "$(cat dummy.txt)" == "dummy" ]] || { echo "dummy.txt must be restored"; exit 1; }
       - name: Remove layer.txt file and dir/subdir hierarchy
         run: rm -rf dir
@@ -49,17 +52,18 @@ jobs:
         uses: ./
         with:
           action: load
+          storage-dir: ~/mnt
           layer-name: my-layer
       - name: Check that dir/subdir/layer.txt was restored, and dummy.txt still exists
         run: |
           set -e
-          ls -la ~/ci-storage/dimikot/ci-storage.my-layer
+          ls -la ~/mnt/${{ github.repository }}.my-layer
           [[ "$(cat dummy.txt)" == "dummy" ]] || { echo "dummy.txt must be kept"; exit 1; }
           [[ "$(cat dir/subdir/layer.txt)" == "layer" ]] || { echo "layer.txt must be restored"; exit 1; }
 
-  # Builds and boots a self-hosted runner inside GitHub's infra. Once it's
+  # Builds and boots a ci-runner container inside GitHub's infra. Once it's
   # settled, there is a running container with one self-hosted runner waiting
-  # for jobs with "ci-storage-test" tag to pick up (based on Dockerfile image).
+  # for jobs with ci-storage-test tag to pick up (based on Dockerfile image).
   build-and-boot-containers:
     runs-on: ubuntu-latest
     needs: ci-storage-tool-test
@@ -72,21 +76,21 @@ jobs:
           cd docker
           # Build all containers.
           docker compose build --parallel
-          # Boot "host" container in background.
-          docker compose up host -d
-          # Boot "self-hosted-runner" container. It connects to "host" container
-          # and load a test (non-existent) ci-storage slot from there, then
-          # register a GitHub self-hosted runner and remain waiting for jobs.
-          docker compose up self-hosted-runner
+          # Boot ci-storage container in background.
+          docker compose up ci-storage -d
+          # Boot ci-runner container. It connects to ci-storage container and
+          # load a test (non-existent) ci-storage slot from there, then register
+          # a GitHub self-hosted runner and remain waiting for jobs.
+          docker compose up ci-runner
         env:
           GH_TOKEN: ${{ secrets.CI_PAT }}
           GH_REPOSITORY: ${{ github.repository }}
           GH_LABELS: ${{ format('ci-storage-test-{0}-{1}', github.run_id, github.run_attempt) }}
 
-  # Test the job with "ci-storage-test" tag which is initially queued, but then
-  # is picked up by the self-hosted-runner container booted in the previous job.
-  # In the end, the test job sends SIGINT to the container entrypoint.sh PID, so
-  # the container (based on Dockerfile image) shuts down gracefully.
+  # Test the job with ci-storage-test tag which is initially queued, but then is
+  # picked up by the ci-runner container booted in the previous job. In the end,
+  # the test job sends SIGINT to the container entrypoint.sh PID, so the
+  # container (based on Dockerfile image) shuts down gracefully.
   spawn-job-test:
     runs-on:
       - self-hosted
@@ -100,11 +104,11 @@ jobs:
         uses: ./
         with:
           action: "store"
-      - name: Kill self-hosted runner container
-        run: kill -SIGINT $(cat ~user/.entrypoint.pid)
+      - name: Kill ci-runner container
+        run: kill -SIGINT $(cat ~guest/.entrypoint.pid)
 
-  # Publishes "host" image to Docker Hub.
-  push-host:
+  # Publishes ci-storage image to Docker Hub.
+  push-ci-storage:
     runs-on: ubuntu-latest
     if: github.event_name != 'pull_request'
     needs:
@@ -118,14 +122,14 @@ jobs:
       - uses: docker/metadata-action@v5
         id: meta
         with:
-          images: dimikot/ci-storage-host
+          images: dimikot/ci-storage
       - uses: docker/login-action@v3
         with:
           username: dimikot
           password: ${{ secrets.DOCKERHUB_PAT }}
       - uses: docker/build-push-action@v5
         with:
-          context: docker/host
+          context: docker/ci-storage
           platforms: linux/amd64,linux/arm64,linux/arm64/v8
           push: ${{ github.event_name != 'pull_request' }}
           tags: ${{ steps.meta.outputs.tags }}
@@ -134,11 +138,11 @@ jobs:
         with:
           username: dimikot
           password: ${{ secrets.DOCKERHUB_PAT }}
-          readme-filepath: docker/host/README.md
-          repository: dimikot/ci-storage-host
+          readme-filepath: ci-storage/README.md
+          repository: dimikot/ci-storage
 
-  # Publishes "self-hosted-runner" image to Docker Hub.
-  push-self-hosted-runner:
+  # Publishes "runner" image to Docker Hub.
+  push-ci-runner:
     runs-on: ubuntu-latest
     if: github.event_name != 'pull_request'
     needs:
@@ -152,14 +156,14 @@ jobs:
       - uses: docker/metadata-action@v5
         id: meta
         with:
-          images: dimikot/ci-storage-self-hosted-runner
+          images: dimikot/ci-runner
       - uses: docker/login-action@v3
         with:
           username: dimikot
           password: ${{ secrets.DOCKERHUB_PAT }}
       - uses: docker/build-push-action@v5
         with:
-          context: docker/self-hosted-runner
+          context: docker/ci-runner
           platforms: linux/amd64,linux/arm64,linux/arm64/v8
           push: ${{ github.event_name != 'pull_request' }}
           tags: ${{ steps.meta.outputs.tags }}
@@ -168,5 +172,5 @@ jobs:
         with:
           username: dimikot
           password: ${{ secrets.DOCKERHUB_PAT }}
-          readme-filepath: docker/self-hosted-runner/README.md
-          repository: dimikot/ci-storage-self-hosted-runner
+          readme-filepath: docker/ci-runner/README.md
+          repository: dimikot/ci-runner
