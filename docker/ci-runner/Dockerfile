@@ -20,14 +20,14 @@ RUN true \
       openssh-client \
       awscli build-essential haproxy rinetd \
       jq gh rsync python3 rsyslog systemctl tzdata gosu less mc git curl wget pv psmisc unzip vim nano telnet net-tools apt-transport-https ca-certificates locales gnupg \
-    && useradd -m user
+    && useradd -m guest
 
-USER user
+USER guest
 RUN true \
-    && mkdir -p ~user/.ssh \
-    && chmod 700 ~user/.ssh \
-    && mkdir ~user/actions-runner \
-    && cd ~user/actions-runner \
+    && mkdir ~guest/.ssh && chmod 700 ~guest/.ssh \
+    && mkdir ~guest/actions-runner \
+    && chown -R guest:guest ~guest \
+    && cd ~guest/actions-runner \
     && arch=$(dpkg --print-architecture) \
     && case "$arch" in \
       x86_64|amd64) arch=linux-x64 ;; \
@@ -37,9 +37,8 @@ RUN true \
     && curl --no-progress-meter -L https://github.com/actions/runner/releases/download/v$RUNNER_VERSION/actions-runner-$arch-$RUNNER_VERSION.tar.gz | tar xz
 
 USER root
-
 RUN true \
-    && ~user/actions-runner/bin/installdependencies.sh \
+    && ~guest/actions-runner/bin/installdependencies.sh \
     && apt-get autoremove \
     && apt-get clean \
     && apt-get autoclean \
@@ -47,12 +46,12 @@ RUN true \
 
 # We want the default user to be root, to allow people extend the image with no
 # boilerplate. But when someone runs e.g. "docker compose exec bash -l", we want
-# the user to be "user".
-RUN echo "cd ~user && gosu user:user bash -l" > ~/.bash_profile
+# the user to be "guest".
+RUN echo "cd ~guest && gosu guest:guest bash -l" > ~/.bash_profile
 
 ADD --chmod=755 https://raw.githubusercontent.com/dimikot/ci-storage/main/ci-storage /usr/bin/ci-storage
 COPY --chmod=755 --chown=root:root root/entrypoint*.sh /root
-COPY --chmod=755 --chown=user:user user/entrypoint*.sh /home/user
+COPY --chmod=755 --chown=guest:guest guest/entrypoint*.sh /home/guest
 
 WORKDIR /root
 ENTRYPOINT ["/root/entrypoint.sh"]

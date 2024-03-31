@@ -11,7 +11,7 @@ inputs:
     description: "Storage host in the format [user@]host[:port]; it must allow password-free SSH key based access. If not passed, tries to read it from ~/ci-storage-host file."
     required: false
   storage-dir:
-    description: "Storage directory on the remote host. If not set, uses ~/ci-storage. Notice that owner and repo are always appended, so the final directory will be {storage-dir}/{owner}/{repo} or {storage-dir}/{owner}/{repo}.{storage-namespace}."
+    description: "Storage directory on the remote host. If not set, uses /mnt. Notice that owner and repo are always appended, so the final directory will be {storage-dir}/{owner}/{repo} or {storage-dir}/{owner}/{repo}.{storage-namespace}."
     required: false
   storage-max-age-sec:
     description: "Remove slots created earlier than this many seconds ago. If not set, uses the ci-storage tool default 4 hours."
@@ -46,7 +46,7 @@ runs:
         if [[ "$storage_host" == "" ]]; then
           storage_host=$(cat ~/ci-storage-host)
         fi
-        storage_dir="${{ inputs.storage-dir || '~/ci-storage' }}/${{ github.repository }}"
+        storage_dir="${{ inputs.storage-dir || '/mnt' }}/${{ github.repository }}"
         layer_name="${{ inputs.layer-name || '' }}"
         layer_include="${{ inputs.layer-include || '' }}"
         if [[ "$layer_name" != "" ]]; then

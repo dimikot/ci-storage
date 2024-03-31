@@ -42,6 +42,7 @@ token=$(gh api -X POST --jq .token "repos/$GH_REPOSITORY/actions/runners/registr
   --token "$token" \
   --name "$name" \
   --labels "$GH_LABELS" \
+  --work /mnt \
   --replace
 
 cleanup() {

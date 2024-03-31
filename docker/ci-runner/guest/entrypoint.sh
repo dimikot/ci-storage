@@ -4,12 +4,12 @@
 #
 set -u -e
 
-if [[ "$(whoami)" != user ]]; then
-  echo 'This script must be run as "user" user.'
+if [[ "$(whoami)" != guest ]]; then
+  echo 'This script must be run as "guest" user.'
   exit 1
 fi
 
-cd ~user
+cd ~guest
 
 echo $$ > .entrypoint.pid
 

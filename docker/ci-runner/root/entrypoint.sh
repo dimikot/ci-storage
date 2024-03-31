@@ -1,7 +1,6 @@
 #!/bin/bash
 #
-# A container which holds ci-storage saved slots. Its ~user/ci-storage directory
-# should be persistent across container restarts (e.g. be on an AWS EBS volume).
+# Includes all entrypoint.*.sh scripts and then runs the guest's entrypoint.sh.
 #
 set -u -e
 
@@ -12,9 +11,11 @@ fi
 
 cd /
 
-"$@"
-
 for entrypoint in ~/entrypoint.*.sh; do
   # shellcheck disable=SC1090
   [[ -f "$entrypoint" ]] && { pushd . >/dev/null; source "$entrypoint"; popd >/dev/null; }
 done
+
+"$@"
+
+exec gosu guest:guest ~guest/entrypoint.sh

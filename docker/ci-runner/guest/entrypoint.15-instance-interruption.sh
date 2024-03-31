@@ -27,7 +27,7 @@ instance_interruption_loop() {
     )
     if [[ "$response_http_200" != "" ]]; then
       echo "$(nice_date): Instance interruption detected, sending SIGINT to PID $pid."
-      kill -int "$pid"
+      kill -SIGINT "$pid"
       return
     else
       sleep 2
