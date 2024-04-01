@@ -1,8 +1,6 @@
 #!/bin/bash
 #
 # Publishes CloudWatch metrics for auto-scaling.
-# - ActiveRunnersPercent: percentage of active runners
-# - IdleRunnersCountInverse: 1000000 minus "count of idle runners"
 #
 set -u -e
 
@@ -35,16 +33,15 @@ cloudwatch_loop() {
         echo "$runners" | jq -r '{id} | .[]'
     )
 
+    # shellcheck disable=SC2034
     IdleRunnersCount=$(echo "$idle_runner_ids" | wc -w)
     ActiveRunnersCount=$(echo "$active_runner_ids" | wc -w)
     AllRunnersCount=$(echo "$all_runner_ids" | wc -w)
     # shellcheck disable=SC2034
     ActiveRunnersPercent=$(("$AllRunnersCount" == 0 ? 100 : 100 * "$ActiveRunnersCount" / "$AllRunnersCount"))
-    # shellcheck disable=SC2034
-    IdleRunnersCountInverse=$((1000000 - "$IdleRunnersCount"))
 
     out=()
-    for metric in IdleRunnersCount ActiveRunnersCount AllRunnersCount ActiveRunnersPercent IdleRunnersCountInverse; do
+    for metric in IdleRunnersCount ActiveRunnersCount AllRunnersCount ActiveRunnersPercent; do
       out+=("$metric=${!metric}")
       if [[ "$REGION" != "" ]]; then
         suffix="publishing to CloudWatch"
