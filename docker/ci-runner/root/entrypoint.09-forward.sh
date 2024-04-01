@@ -34,7 +34,11 @@ if [[ "$FORWARD_HOST" != "" && "$FORWARD_PORTS" != "" ]]; then
     config=/etc/haproxy/haproxy.cfg
     section="# forward"
     (
-      sed -e "/^$section/,\$d" -e "/httplog/d" $config
+      sed -E \
+        -e "/^$section/,\$d" \
+        -e '/httplog/d' \
+        -e 's/^([[:space:]]+timeout[[:space:]]+(client|server))[[:space:]]+[0-9]+/\1 3600000/g' \
+        $config
       echo "$section"
       echo "resolvers res"
       echo "  parse-resolv-conf"

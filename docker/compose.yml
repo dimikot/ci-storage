@@ -15,8 +15,8 @@ services:
       - TZ=${TZ:-}
     secrets:
       - CI_STORAGE_PUBLIC_KEY
-    volumes:
-      - ${CI_STORAGE_MNT_VOLUME:-ci-storage-mnt}:/mnt
+    tmpfs:
+      - /mnt:exec
   ci-runner:
     build:
       context: ci-runner
@@ -43,6 +43,3 @@ secrets:
     file: ./test-public-key
   CI_STORAGE_PRIVATE_KEY:
     file: ./test-private-key
-volumes:
-  ci-storage-mnt:
-    external: false
