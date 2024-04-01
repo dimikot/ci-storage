@@ -22,10 +22,11 @@ self-hosted runners as you want. An example scenario:
      container
    - pass the secret `CI_STORAGE_PRIVATE_KEY`: SSH private key needed to access
      CI_STORAGE_HOST without a password.
-3. Set up auto-scaling rules based on e.g. the containers' CPU usage. The
-   running containers are safe to shut down at anytime if it's done gracefully
-   and with high timeout (to let all the running workflow jobs finish there and
-   de-register the runner).
+3. Set up auto-scaling rules based on e.g. the containers' CPU usage or
+   ActiveRunnersPercent CloudWatch metric which the container publishes time to
+   time. The running containers are safe to shut down at anytime if it's done
+   gracefully and with high timeout (to let all the running workflow jobs finish
+   there and de-register the runner).
 4. And here comes the perf magic: when the container first boots, but before it
    becomes available for the jobs, it pre-initializes its work directory from
    ci-storage slots storage (see `CI_STORAGE_HOST`). So when a job is picked up,
@@ -47,7 +48,7 @@ automatically picked up and executed.
 To enter the container, run e.g.:
 
 ```
-docker compose exec runner bash -l
+docker compose exec ci-runner bash -l
 ```
 
 It will automatically change the user and current directory to `/home/guest`
