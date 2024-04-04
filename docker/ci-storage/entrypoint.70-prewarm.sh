@@ -16,4 +16,8 @@ prewarm_loop() {
   done
 }
 
-prewarm_loop &
+# Print "prewarm" stats only when TZ is set. This prevents it from printing in
+# debug dev environment of the client for instance.
+if [[ "$TZ" != "" ]]; then
+  prewarm_loop &
+fi
