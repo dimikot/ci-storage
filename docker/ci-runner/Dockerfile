@@ -20,7 +20,7 @@ RUN true \
       openssh-client \
       awscli build-essential haproxy rinetd \
       jq gh rsync python3 rsyslog systemctl tzdata gosu less mc git curl wget pv psmisc unzip vim nano telnet net-tools apt-transport-https ca-certificates locales gnupg \
-    && useradd -m guest
+    && useradd -m guest -s /bin/bash
 
 USER guest
 RUN true \

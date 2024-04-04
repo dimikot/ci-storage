@@ -12,7 +12,7 @@ RUN true \
       openssh-server \
       jq gh rsync python3 rsyslog systemctl tzdata gosu less mc git curl wget pv psmisc unzip vim nano telnet net-tools apt-transport-https ca-certificates locales gnupg \
     && sed -i -e "s|#PermitRootLogin.*|PermitRootLogin no|" /etc/ssh/sshd_config \
-    && useradd -m guest \
+    && useradd -m guest -s /bin/bash \
     && mkdir ~guest/.ssh && chmod 700 ~guest/.ssh \
     && chown -R guest:guest ~guest
     
