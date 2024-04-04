@@ -11,5 +11,7 @@ cd "$(dirname "${BASH_SOURCE[0]}")"
   --exclude=".git" \
   store
 
+# To let background garbage collection finish.
 sleep 0.5
+
 ls -la /tmp/ci-storage-tests

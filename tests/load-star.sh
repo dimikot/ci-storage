@@ -10,5 +10,4 @@ cd "$(dirname "${BASH_SOURCE[0]}")"
   --exclude=".git" \
   load
 
-sleep 0.5
 ls -la /tmp/ci-storage-tests

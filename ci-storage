@@ -188,20 +188,18 @@ def action_store(
     check_call(
         cmd=[
             "rsync",
-            *(["-e", shlex.join(build_ssh_cmd(port=port))] if storage_host else []),
-            "-a",
-            "--partial",
             "--inplace",
-            "--stats",
             *([f"--link-dest=../{slot_id_recent}/"] if slot_id_recent else []),
-            *build_rsync_include_exclude(
+            *build_rsync_args(
+                host=host,
+                port=port,
                 action="store",
                 exclude=exclude,
                 layer=layer,
                 verbose=verbose,
             ),
             f"{local_dir}/",
-            (f"{host}:" if storage_host else "") + f"{storage_dir}/{slot_id_tmp}/",
+            (f"{host}:" if host else "") + f"{storage_dir}/{slot_id_tmp}/",
         ],
         print_elapsed=True,
     )
@@ -244,18 +242,15 @@ def action_load(
     check_call(
         cmd=[
             "rsync",
-            *(["-e", shlex.join(build_ssh_cmd(port=port))] if storage_host else []),
-            "-a",
-            "--partial",
-            "--stats",
-            "--human-readable",
-            *build_rsync_include_exclude(
+            *build_rsync_args(
+                host=host,
+                port=port,
                 action="load",
                 exclude=exclude,
                 layer=layer,
                 verbose=verbose,
             ),
-            (f"{host}:" if storage_host else "") + f"{storage_dir}/{slot_id}/",
+            (f"{host}:" if host else "") + f"{storage_dir}/{slot_id}/",
             f"{local_dir}/",
         ],
         print_elapsed=True,
@@ -427,16 +422,43 @@ def build_ssh_cmd(
 
 
 #
-# Builds some of rsync options related to filles inclusion/exclusion.
+# Builds some of rsync options.
 #
-def build_rsync_include_exclude(
+def build_rsync_args(
     *,
+    host: str | None,
+    port: int | None,
     action: typing.Literal["store", "load"],
     exclude: list[str],
     layer: list[str],
     verbose: bool,
 ) -> list[str]:
+    version_info = check_output(host=None, cmd=["rsync", "--version"])
+    version_str = "unknown version"
+    version_supports_nanoseconds = False
+    match = re.search(r"version\s+([\d.]+)", version_info)
+    if match:
+        version_str = match.group(1)
+        version = tuple(int(v) for v in version_str.split("."))
+        version_supports_nanoseconds = version >= (3, 1, 0)
+    print(
+        f"  {version_str}: "
+        + (
+            "using nanosecond precision for timestamps"
+            if version_supports_nanoseconds
+            else "too old; doesn't support nanosecond precision for timestamps; only 1 second accuracy"
+        )
+    )
     return [
+        *(["-e", shlex.join(build_ssh_cmd(port=port))] if host else []),
+        "-a",
+        "--partial",
+        "--stats",
+        "--human-readable",
+        # Nanosecond precision for mtime comparison if supported. Notice that we
+        # don't check the server-side version: if it's older, then we're doomed,
+        # all files will be treated as changed likely.
+        *(["--modify-window=-1"] if version_supports_nanoseconds else []),
         *([] if layer and action == "load" else ["--delete"]),
         *(["-vv"] if verbose and layer else ["-v"] if verbose else []),
         *[f"--exclude={pattern}" for pattern in exclude],
