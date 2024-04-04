@@ -283,7 +283,10 @@ def action_maintenance(
 
 
 #
-# Returns the list of existing slot ids and their age in seconds, sorted by age.
+# Returns the list of existing slot ids and their ages in seconds, sorted by age
+# (i.e. most recently created slots on top of the list). Also, as a side effect,
+# touches the newest slot directory on the server (assuming it'll be accessed),
+# so it will unlikely be garbage collected anytime soon.
 #
 def list_slots(
     *,
@@ -297,10 +300,9 @@ def list_slots(
         args=[storage_dir],
     )
     for line in lines.splitlines():
-        match = re.match(r"^([^.]+) (\d+)$", line)
+        match = re.match(r"^(.+) (\d+)$", line)
         if match:
             slot_ids_and_ages.append((match.group(1), int(match.group(2))))
-    slot_ids_and_ages.sort(key=lambda x: x[1])
     return slot_ids_and_ages
 
 
@@ -314,7 +316,8 @@ def normalize_slot_id(
 
 
 #
-# Runs an inline script and returns its output.
+# Runs an inline script and returns its output. If the call succeeded, but
+# produced some stderr, prints it.
 #
 def check_output_script(
     *,
@@ -327,7 +330,8 @@ def check_output_script(
 
 
 #
-# Runs a command and returns its output.
+# Runs a command and returns its output. If the call succeeded, but produced
+# some stderr, prints it.
 #
 def check_output(
     *,
@@ -342,12 +346,21 @@ def check_output(
         cmd = [*ssh_prefix, shlex.join(cmd)]
     else:
         print(f"$ {cmd_to_debug_str(cmd)}")
-    output = subprocess.check_output(cmd, text=True, stderr=subprocess.PIPE)
-    return textwrap.indent(output, "  ") if indent else output
+    res = subprocess.run(
+        cmd,
+        text=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        check=True,
+    )
+    if res.stderr:
+        print(textwrap.indent(res.stderr.rstrip(), "  "))
+    return textwrap.indent(res.stdout, "  ") if indent else res.stdout
 
 
 #
-# Runs a command and passes through its output.
+# Runs a command and passes through its output from both stdout and stderr as it
+# arrives (without any buffering).
 #
 def check_call(
     *,
@@ -357,7 +370,10 @@ def check_call(
     print(f"$ {cmd_to_debug_str(cmd)}")
     start_time = time.time()
     process = subprocess.Popen(
-        cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True
+        cmd,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+        text=True,
     )
     while process.stdout:
         line = process.stdout.readline()
@@ -458,6 +474,37 @@ class UserException(Exception):
 
 
 #
+# A reusable piece injected to SCRIPTS below. Returns all slot directories
+# (including temporary, backup etc.) with their associated information. The
+# newest slots appear on top of the list.
+#
+SLOT_INFOS = textwrap.dedent(
+    r"""
+    sub slot_infos {
+        my ($storage_dir) = @_;
+        return
+            sort { $a->{age_sec} cmp $b->{age_sec} }
+            map {
+                my $dir = $_;
+                $dir =~ s{/+$}{}s;
+                my $inode_time = (stat($dir))[10] or die("stat $dir: $!\n");
+                my $age_sec = time() - $inode_time;
+                my $slot_id = $dir;
+                $slot_id =~ s{^.*/}{}s;
+                {
+                    slot_id => $slot_id,
+                    age_sec => $age_sec,
+                    dir => $dir,
+                    is_garbage => $slot_id =~ /\./ ? 1 : 0,
+                    is_bak => $slot_id =~ /\.bak\.\d+$/s ? 1 : 0,
+                };
+            }
+            glob("$storage_dir/*/");
+    }
+    """.strip()
+)
+
+#
 # Inline scripts to run on the storage host. Reasons to use Perl:
 # - It exists and is of the same version everywhere (as opposed to Python).
 # - It is fast to boot and doesn't require external modules.
@@ -465,8 +512,10 @@ class UserException(Exception):
 # - If has native fork() support.
 #
 SCRIPTS = {
-    # The script to list existing slot ids and their age in seconds. It also
-    # pre-creates the storage directory if it doesn't exist.
+    # The script to list existing non-garbage slot ids and their ages in
+    # seconds. Most recent slots are on top of the list. It also pre-creates the
+    # storage directory, and changes ctime of the most recent slot to the
+    # present time (so it will unlikely be garbage collected soon).
     "LIST_SLOTS": textwrap.dedent(
         r"""
         use strict;
@@ -475,16 +524,20 @@ SCRIPTS = {
         if (!-d $storage_dir) {
             system("mkdir", "-p", $storage_dir) == 0 or exit(1);
         }
-        my @slot_dirs = glob("$storage_dir/*/");
-        foreach my $dir (@slot_dirs) {
-            $dir =~ s{/+$}{}s;
-            my $inode_time = (stat($dir))[10] or die("stat $dir: $!\n");
-            my $age_sec = time() - $inode_time;
-            my $slot_id = $dir;
-            $slot_id =~ s{^.*/}{}s;
-            print("$slot_id $age_sec\n");
+        %(SLOT_INFOS)s
+        my @slot_infos =
+            grep { !$_->{is_garbage} }
+            slot_infos($storage_dir);
+        if (@slot_infos) {
+            my $dir = $slot_infos[0]{dir};
+            utime(time(), time(), $dir) or die("utime $dir: $!\n");
+            foreach (@slot_infos) {
+                print("$_->{slot_id} $_->{age_sec}\n");
+            }
+            print STDERR "returned ".scalar(@slot_infos)." slot(s) and also touched the newest slot $dir\n";
         }
         """.strip()
+        % {"SLOT_INFOS": SLOT_INFOS}
     ),
     # The script to rename the new slot directory to the destination one.
     "COMMIT_SLOT": textwrap.dedent(
@@ -500,6 +553,7 @@ SCRIPTS = {
         -d $slot_dir_bak and (system("rm", "-rf", $slot_dir_bak) == 0 or die("rm -rf $slot_dir_bak: $!\n"));
         -d $slot_dir_dst and (system("mv", $slot_dir_dst, $slot_dir_bak) == 0 or die("mv $slot_dir_dst $slot_dir_bak: $!\n"));
         system("mv", $slot_dir_tmp, $slot_dir_dst) == 0 or die("mv $slot_dir_tmp $slot_dir_dst: $!\n");
+        print STDERR "renamed $slot_dir_tmp to $slot_dir_dst\n";
         """.strip()
     ),
     # This script is launched in background on the storage host to cleanup old or
@@ -520,24 +574,19 @@ SCRIPTS = {
             print("another maintenance process is already running, so skipping\n");
             exit(0);
         }
-        my @slot_infos =
-            sort { $a->[1] <=> $b->[1] }
-            map {
-                $_ =~ s{/+$}{}s;
-                my $inode_time = (stat($_))[10] or die("stat $_: $!\n");
-                my $age_sec = time() - $inode_time;
-                [$_, $age_sec];
-            }
-            glob("$storage_dir/*/");
-        my $slot_dir_latest = (map { $_->[0] } grep { $_->[0] !~ /\./ } @slot_infos)[0];
+        %(SLOT_INFOS)s
+        my @slot_infos = slot_infos($storage_dir);
+        my $slot_dir_newest = (map { $_->{dir} } grep { !$_->{is_garbage} } @slot_infos)[0];
         my @rm_dirs = ();
         foreach my $info (@slot_infos) {
-            my ($dir, $age_sec) = @$info;
-            if (defined($slot_dir_latest) && $dir eq $slot_dir_latest) {
+            my $dir = $info->{dir};
+            my $age_sec = $info->{age_sec};
+            my $is_bak = $info->{is_bak};
+            if (defined($slot_dir_newest) && $dir eq $slot_dir_newest) {
                 # Never delete the latest slot, even if it is old.
                 next;
             }
-            if ($age_sec > $max_age_sec || $dir =~ /\.bak\.\d+$/s && $age_sec > %(STORAGE_MAX_AGE_SEC_BAK)d) {
+            if ($age_sec > $max_age_sec || $is_bak && $age_sec > %(STORAGE_MAX_AGE_SEC_BAK)d) {
                 push(@rm_dirs, $dir);
                 print("will remove $dir (age: $age_sec sec) in background\n");
             }
@@ -564,7 +613,7 @@ SCRIPTS = {
         }
         unlink($lock_file);
         """.strip()
-        % {"STORAGE_MAX_AGE_SEC_BAK": STORAGE_MAX_AGE_SEC_BAK}
+        % {"SLOT_INFOS": SLOT_INFOS, "STORAGE_MAX_AGE_SEC_BAK": STORAGE_MAX_AGE_SEC_BAK}
     ),
 }
 
