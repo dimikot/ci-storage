@@ -505,21 +505,25 @@ SLOT_INFOS = textwrap.dedent(
     sub slot_infos {
         my ($storage_dir) = @_;
         return
-            sort { $a->{age_sec} cmp $b->{age_sec} }
+            sort { $a->{age_sec} <=> $b->{age_sec} }
             map {
                 my $dir = $_;
                 $dir =~ s{/+$}{}s;
-                my $inode_time = (stat($dir))[10] or die("stat $dir: $!\n");
-                my $age_sec = time() - $inode_time;
-                my $slot_id = $dir;
-                $slot_id =~ s{^.*/}{}s;
-                {
-                    slot_id => $slot_id,
-                    age_sec => $age_sec,
-                    dir => $dir,
-                    is_garbage => $slot_id =~ /\./ ? 1 : 0,
-                    is_bak => $slot_id =~ /\.bak\.\d+$/s ? 1 : 0,
-                };
+                my $inode_ctime = (stat($dir))[10];
+                if ($inode_ctime) {
+                    my $slot_id = $dir;
+                    $slot_id =~ s{^.*/}{}s;
+                    {
+                        slot_id => $slot_id,
+                        inode_ctime => $inode_ctime,
+                        age_sec => time() - $inode_ctime,
+                        dir => $dir,
+                        is_garbage => $slot_id =~ /\./ ? 1 : 0,
+                        is_bak => $slot_id =~ /\.bak\.\d+$/s ? 1 : 0,
+                    };
+                } else {
+                    ();
+                }
             }
             glob("$storage_dir/*/");
     }
@@ -551,12 +555,14 @@ SCRIPTS = {
             grep { !$_->{is_garbage} }
             slot_infos($storage_dir);
         if (@slot_infos) {
-            my $dir = $slot_infos[0]{dir};
-            utime(time(), time(), $dir) or die("utime $dir: $!\n");
+            my $newest_dir = $slot_infos[0]{dir};
+            my $newest_age_sec = $slot_infos[0]{age_sec};
+            my $newest_inode_ctime = $slot_infos[0]{inode_ctime};
+            utime(time(), time(), $newest_dir) or die("utime $newest_dir: $!\n");
             foreach (@slot_infos) {
                 print("$_->{slot_id} $_->{age_sec}\n");
             }
-            print STDERR "returned ".scalar(@slot_infos)." slot(s) and also touched the newest slot $dir\n";
+            print STDERR "returned ".scalar(@slot_infos)." slot(s) and also touched the newest slot $newest_dir (inode_ctime=$newest_inode_ctime, age_sec=$newest_age_sec)\n";
         }
         """.strip()
         % {"SLOT_INFOS": SLOT_INFOS}
