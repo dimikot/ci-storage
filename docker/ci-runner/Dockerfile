@@ -50,6 +50,8 @@ RUN true \
 RUN echo "cd ~guest && gosu guest:guest bash -l" > ~/.bash_profile
 
 ADD --chmod=755 https://raw.githubusercontent.com/dimikot/ci-storage/main/ci-storage /usr/bin/ci-storage
+ADD --chmod=755 https://raw.githubusercontent.com/dimikot/signal-fanout/main/signal-fanout /usr/bin/signal-fanout
+
 COPY --chmod=755 --chown=root:root root/entrypoint*.sh /root
 COPY --chmod=755 --chown=guest:guest guest/entrypoint*.sh /home/guest
 

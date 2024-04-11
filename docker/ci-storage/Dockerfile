@@ -15,7 +15,6 @@ RUN true \
     && useradd -m guest -s /bin/bash \
     && mkdir ~guest/.ssh && chmod 700 ~guest/.ssh \
     && chown -R guest:guest ~guest
-    
 
 # We want the default user to be root, to allow people extend the image with no
 # boilerplate. But when someone runs e.g. "docker compose exec bash -l", we want
