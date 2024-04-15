@@ -11,3 +11,4 @@ cd "$(dirname "${BASH_SOURCE[0]}")"
   load
 
 ls -la /tmp/ci-storage-tests
+ls -la /tmp/ci-storage-loaded
