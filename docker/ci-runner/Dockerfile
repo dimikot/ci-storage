@@ -1,8 +1,6 @@
 ARG BASE_IMAGE="ubuntu:22.04"
 FROM $BASE_IMAGE
 
-ARG RUNNER_VERSION="2.314.1"
-
 ENV GH_TOKEN=""
 ENV GH_REPOSITORY=""
 ENV GH_LABELS=""
@@ -34,7 +32,8 @@ RUN true \
       aarch64|arm64) arch=linux-arm64 ;; \
       *) echo >&2 "unsupported architecture: $arch"; exit 1 ;; \
     esac \
-    && curl --no-progress-meter -L https://github.com/actions/runner/releases/download/v$RUNNER_VERSION/actions-runner-$arch-$RUNNER_VERSION.tar.gz | tar xz
+    && runner_version=$(curl --silent "https://api.github.com/repos/actions/runner/releases/latest" | jq -r ".tag_name[1:]") \
+    && curl --no-progress-meter -L https://github.com/actions/runner/releases/download/v$runner_version/actions-runner-$arch-$runner_version.tar.gz | tar xz
 
 USER root
 RUN true \
