@@ -52,7 +52,7 @@ ones, so rsync can run efficiently.
 
     # Id of the slot to store to or load from; use "*" to load a random
     # most recent slot and skip if it does not exist.
-    # Default: "$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT"
+    # Default: $GITHUB_RUN_ID
     slot-id: ''
 
     # Local directory path to store from or load to.
