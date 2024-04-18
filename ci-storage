@@ -364,20 +364,28 @@ def check_call(
 ) -> None:
     print(f"$ {cmd_to_debug_str(cmd)}")
     start_time = time.time()
-    process = subprocess.Popen(
+    with subprocess.Popen(
         cmd,
         stdout=subprocess.PIPE,
         stderr=subprocess.STDOUT,
         text=True,
-    )
-    while process.stdout:
-        line = process.stdout.readline()
-        if not line and process.poll() is not None:
-            break
-        if line.strip():
-            print(f"  {line}", end="")
-    if print_elapsed:
-        print(f"  elapsed: {time.time() - start_time:.2f} sec")
+    ) as process:
+        while process.stdout:
+            line = process.stdout.readline()
+            if not line and process.poll() is not None:
+                break
+            if line.strip():
+                print(f"  {line}", end="")
+        elapsed = f"  elapsed: {time.time() - start_time:.2f} sec"
+        if process.returncode:
+            raise subprocess.CalledProcessError(
+                process.returncode,
+                process.args,
+                output="",
+                stderr=elapsed,
+            )
+        elif print_elapsed:
+            print(elapsed)
 
 
 #
@@ -660,7 +668,7 @@ if __name__ == "__main__":
     except subprocess.CalledProcessError as e:
         print(
             textwrap.indent(
-                f"Command returned status {e.returncode}."
+                f"Error: command returned status {e.returncode}."
                 + (f"\n{e.stdout}" if e.stdout else "")
                 + (f"\n{e.stderr}" if e.stderr else ""),
                 "  ",
