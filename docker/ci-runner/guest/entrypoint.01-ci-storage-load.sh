@@ -8,7 +8,7 @@ echo "$CI_STORAGE_HOST" > ci-storage-host
 
 local_dir=/mnt/${GH_REPOSITORY##*/}/${GH_REPOSITORY##*/}
 
-if [[ "$CI_STORAGE_HOST" != "" ]]; then
+if [[ "$CI_STORAGE_HOST" != "" && -f ~/.ssh/id_rsa ]]; then
   mkdir -p "$local_dir"
   ci-storage load \
     --storage-host="$CI_STORAGE_HOST" \

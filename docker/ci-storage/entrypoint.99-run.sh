@@ -4,5 +4,7 @@
 #
 set -u -e
 
+echo "Starting SSH server..."
+
 mkdir -p /var/run/sshd
 exec /usr/sbin/sshd -D -o ListenAddress=0.0.0.0

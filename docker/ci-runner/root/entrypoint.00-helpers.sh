@@ -32,4 +32,3 @@ export -f aws_metadata_curl
 export -f nice_date
 
 nice_date
-echo

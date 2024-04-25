@@ -5,12 +5,9 @@
 set -u -e
 
 secret_file=/run/secrets/CI_STORAGE_PUBLIC_KEY
-
-if [[ ! -r "$secret_file" || -d "$secret_file" ]]; then
-  echo "You must pass secret $(basename "$secret_file") or mount $secret_file file when using this image."
-  exit 1
+if [[ -f "$secret_file" ]]; then
+  cat "$secret_file" > ~guest/.ssh/authorized_keys
+  chmod 600 ~guest/.ssh/*
 fi
 
-cat "$secret_file" > ~guest/.ssh/authorized_keys
 chown -R guest:guest ~guest/.ssh
-chmod 600 ~guest/.ssh/*
