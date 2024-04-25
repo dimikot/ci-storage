@@ -25,13 +25,16 @@ services:
     depends_on:
       ci-storage:
         condition: service_healthy
+    extra_hosts:
+      - host.docker.internal:host-gateway
     environment:
       - GH_TOKEN
       - GH_REPOSITORY
       - GH_LABELS
-      - CI_STORAGE_HOST
-      - TZ=America/Los_Angeles
-      - FORWARD_PORTS=22/tcp 8125/udp
+      - TZ
+      - FORWARD_HOST
+      - FORWARD_PORTS=10022/tcp 8125/udp
+      - CI_STORAGE_HOST=127.0.0.1:10022
       - DEBUG_SHUTDOWN_DELAY_SEC=1
     secrets:
       - CI_STORAGE_PRIVATE_KEY
