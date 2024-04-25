@@ -10,3 +10,5 @@ nice_date() {
 }
 
 export -f nice_date
+
+nice_date

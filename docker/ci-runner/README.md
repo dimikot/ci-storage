@@ -8,20 +8,23 @@ self-hosted runners as you want. An example scenario:
    may make sense to extend the base image with your own commands.
 2. Run an AWS cluster (with e.g. spot instances with manual docker container
    boot) and use the image you just published. Configure its environment
-   variables and secrets accordingly:
-   - `GH_TOKEN`: PAT used to register the runner at github.com
-   - `GH_REPOSITORY`: the repository this runner will serve
-   - `GH_LABELS`: labels added to this runner
-   - `FORWARD_HOST`: some ports at localhost will be forwarded to this host
-     (optional)
-   - `FORWARD_PORTS`: the list of forwarded ports (optional)
-   - `CI_STORAGE_HOST`: the host which the initial ci-storage run will pull the
-     data from (optional)
-   - `DEBUG_SHUTDOWN_DELAY_SEC`: a debug feature to test, how much time does the
-     orchestrator give the container to gracefully shutdown before killing the
-     container
-   - pass the secret `CI_STORAGE_PRIVATE_KEY`: SSH private key needed to access
-     CI_STORAGE_HOST without a password.
+   variables:
+   - `GH_TOKEN` (required): PAT used to register the runner at github.com
+   - `GH_REPOSITORY` (required): the repository this runner will serve
+   - `GH_LABELS` (required): labels added to this runner
+   - `CI_STORAGE_HOST` (optional): the host which the initial ci-storage run
+     will pull the data from
+   - `TZ` (optional): timezone name
+   - `FORWARD_HOST` (optional): some ports at localhost will be forwarded to
+     this host (optional; defaults to CI_STORAGE_HOST)
+   - `FORWARD_PORTS` (optional): the list of forwarded ports
+   - `DEBUG_SHUTDOWN_DELAY_SEC` (optional): a debug feature to test, how much
+     time does the orchestrator give the container to gracefully shutdown before
+     killing the container
+3. Pass secrets:
+   - `CI_STORAGE_PRIVATE_KEY` (optional): pass this secret or mount a file from
+     host to `/run/secrets/CI_STORAGE_PRIVATE_KEY` to configure SSH private key
+     needed to access CI_STORAGE_HOST without a password
 3. Set up auto-scaling rules based on e.g. the containers' CPU usage or
    ActiveRunnersPercent CloudWatch metric which the container publishes time to
    time. The running containers are safe to shut down at anytime if it's done

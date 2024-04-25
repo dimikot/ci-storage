@@ -19,6 +19,11 @@ if [[ "${GH_LABELS:=}" == "" ]]; then
   exit 1
 fi
 
+if [[ "${CI_STORAGE_HOST:=}" != "" && ! "$CI_STORAGE_HOST" =~ ^([-.[:alnum:]]+@)?[-.[:alnum:]]+(:[0-9]+)?$ ]]; then
+  echo "If CI_STORAGE_HOST is passed, it must be in form of [user@]host[:port]."
+  exit 1
+fi
+
 if [[ "${FORWARD_HOST:=}" != "" && ! "$FORWARD_HOST" =~ ^[-.[:alnum:]]+(:[0-9]+)?$ ]]; then
   echo "If FORWARD_HOST is passed, it must be a hostname."
   exit 1
@@ -29,17 +34,14 @@ if [[ "${FORWARD_PORTS:=}" != "" && ! "$FORWARD_PORTS" =~ ^([[:space:]]*[0-9]+(/
   exit 1
 fi
 
-if [[ "${CI_STORAGE_HOST:=}" != "" && ! "$CI_STORAGE_HOST" =~ ^([-.[:alnum:]]+@)?[-.[:alnum:]]+(:[0-9]+)?$ ]]; then
-  echo "If CI_STORAGE_HOST is passed, it must be in form of [user@]host[:port]."
-  exit 1
-fi
-
-if [[ "${CI_STORAGE_HOST:=}" != "" && ! -f /run/secrets/CI_STORAGE_PRIVATE_KEY ]]; then
-  echo "You must pass secret CI_STORAGE_PRIVATE_KEY when using CI_STORAGE_HOST."
-  exit 1
-fi
-
 if [[ "${DEBUG_SHUTDOWN_DELAY_SEC:=}" != "" && ! "$DEBUG_SHUTDOWN_DELAY_SEC" =~ ^[0-9]+$ ]]; then
   echo "If DEBUG_SHUTDOWN_DELAY_SEC is passed, it must be a number."
   exit 1
 fi
+
+secret_file=/run/secrets/CI_STORAGE_PRIVATE_KEY
+if [[ "$CI_STORAGE_HOST" != "" && ! -f $secret_file ]]; then
+  echo "To access CI_STORAGE_HOST=$CI_STORAGE_HOST, a secret $(basename "$secret_file") or a mounted file $secret_file should exist. The container will start, but ci-storage tool won't be usable, which may be fine in dev environment."
+fi
+
+echo
