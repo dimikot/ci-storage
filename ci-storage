@@ -422,10 +422,10 @@ def build_ssh_cmd(
 ) -> list[str]:
     return [
         "ssh",
-        *([f"-p{port}"] if port else []),
         "-oStrictHostKeyChecking=no",
         "-oUserKnownHostsFile=/dev/null",
         "-oLogLevel=error",
+        *([f"-p{port}"] if port else []),
     ]
 
 

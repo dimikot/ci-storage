@@ -4,10 +4,6 @@
 #
 set -u -e
 
-if [[ "$FORWARD_HOST" == "" ]]; then
-  FORWARD_HOST="$CI_STORAGE_HOST"
-fi
-
 if [[ "$FORWARD_HOST" != "" && "$FORWARD_PORTS" != "" ]]; then
   FORWARD_HOST="${FORWARD_HOST%%:*}"
 
