@@ -2,11 +2,21 @@
 
 # CI Storage
 
-This action quickly stores the content of the work directory in the storage with
-the provided slot id on a remote host, or loads the content from the storage to
-that directory. The tool makes some smart differential optimizations along the
-way to operate as fast as possible (typically, 4 seconds for a 1.5G directory
-with 200K files in it on Linux EXT4).
+This repository is a combination of several tools which work in unison:
+
+- [Action: ci-storage](#action-ci-storage). A GitHub action which uses ci-storage command-line tool.
+- [Command-line tool: ci-storage](https://github.com/dimikot/ci-storage/blob/main/ci-storage). The tool itself. It can be used stand-alone too.
+- [Docker image: ci-storage](https://github.com/dimikot/ci-storage/tree/main/docker/ci-storage). Allows to launch ci-storage part of self-hosted runners infra.
+- [Docker image: ci-runner](https://github.com/dimikot/ci-storage/tree/main/docker/ci-runner). Allows to launch self-hosted runners themselves.
+
+## Action: ci-storage
+
+This [action](https://github.com/dimikot/ci-storage/blob/main/action.yml)
+quickly (only when run on your own self-hosted runners infra) stores the content
+of the work directory in the storage with the provided slot id on a remote host,
+or loads the content from the storage to that directory. The tool makes some
+smart differential optimizations along the way to operate as fast as possible
+(typically, 4 seconds for a 1.5G directory with 200K files in it on Linux EXT4).
 
 Under the hood, the tool uses rsync. When storing to the remote storage, it uses
 rsync's "--link-dest" mode pointing to the most recently created slot, to reuse
@@ -19,15 +29,15 @@ When loading the files from a remote storage slot to a local directory, implies
 that the local directory already contains almost all files equal to the remote
 ones, so rsync can run efficiently.
 
-> [!NOTE] 
-> 
+> [!NOTE]
+>
 > This tool makes sense only when using it with [Self-Hosted
 > Runners](https://docs.github.com/en/actions/hosting-your-own-runners/managing-self-hosted-runners/about-self-hosted-runners).
 > The main idea is to reuse the previous build artifacts in work directories,
 > which is not possible with default GitHub-Hosted Runners (GitHub always boots
 > the virtual machines with empty work directories).
 
-# Usage
+### Usage
 
 <!-- start usage -->
 ```yaml
@@ -80,7 +90,7 @@ ones, so rsync can run efficiently.
 ```
 <!-- end usage -->
 
-## Example: Build, then Store Work Directory in the Storage
+### Example: Build, then Store Work Directory in the Storage
 
 ```yaml
 jobs:
@@ -103,7 +113,7 @@ jobs:
     # ...
 ```
 
-## Example: Load Work Directory from the Storage and Run Tests
+### Example: Load Work Directory from the Storage and Run Tests
 
 The benefit in speed can only be achieved if you use self-hosted Action Runners.
 In this case, the content of work directory will be reused across the jobs runs,
@@ -130,6 +140,30 @@ jobs:
     # ...
 ```
 
+
+## Command-line tool: ci-storage
+
+The command-line tool allows to run ci-storage manually.
+
+- [See source code and description](https://github.com/dimikot/ci-storage/blob/main/ci-storage)
+
+
+## Docker image: ci-storage
+
+A part of self-hosted runners infra representing the storage for ci-storage tool.
+
+- [See README](https://github.com/dimikot/ci-storage/tree/main/docker/ci-storage)
+- [See Docker image: dimikot/ci-storage](https://github.com/dimikot/ci-storage/pkgs/container/ci-storage)
+
+
+## Docker image: ci-runner
+
+A part of self-hosted runners infra representing GitHub Actions runner.
+
+- [See README](https://github.com/dimikot/ci-storage/tree/main/docker/ci-runner)
+- [See Docker image: dimikot/ci-runner](https://github.com/dimikot/ci-storage/pkgs/container/ci-runner)
+
+
 # License
 
-The scripts and documentation in this project are released under the [MIT License](LICENSE).
+The project and documentation are released under the [MIT License](LICENSE).
