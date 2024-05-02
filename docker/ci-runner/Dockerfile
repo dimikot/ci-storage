@@ -12,14 +12,29 @@ ENV DEBUG_SHUTDOWN_DELAY_SEC=""
 # SECRET: CI_STORAGE_PRIVATE_KEY
 
 ENV DEBIAN_FRONTEND=noninteractive
+
+# Register official Docker repo.
+RUN true \
+    && apt-get update -y \
+    && apt-get install -y lsb-release ca-certificates curl \
+    && install -m 0755 -d /etc/apt/keyrings \
+    && curl -fsSL https://download.docker.com/linux/ubuntu/gpg -o /etc/apt/keyrings/docker.asc \
+    && chmod a+r /etc/apt/keyrings/docker.asc \
+    && echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" | tee /etc/apt/sources.list.d/docker.list
+
+# Install all needed packages.
 RUN true \
     && apt-get update -y \
     && apt-get install -y --no-install-recommends \
       openssh-client \
-      awscli build-essential haproxy rinetd \
-      jq gh rsync python3 rsyslog systemctl tzdata gosu less mc git curl wget pv psmisc unzip vim nano telnet net-tools apt-transport-https ca-certificates locales gnupg \
+      docker-ce-cli awscli build-essential haproxy rinetd \
+      jq gh rsync python3 rsyslog systemctl tzdata gosu less mc git curl wget pv psmisc unzip vim nano telnet net-tools apt-transport-https ca-certificates locales gnupg
+
+# Add user "guest".
+RUN true \
     && useradd -m guest -s /bin/bash
 
+# Do stuff as user "guest".
 USER guest
 RUN true \
     && mkdir ~guest/.ssh && chmod 700 ~guest/.ssh \

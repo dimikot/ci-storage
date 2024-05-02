@@ -17,6 +17,7 @@ services:
       - CI_STORAGE_PUBLIC_KEY
     tmpfs:
       - /mnt:exec
+
   ci-runner:
     build:
       context: ci-runner
@@ -40,6 +41,10 @@ services:
       - CI_STORAGE_PRIVATE_KEY
     tmpfs:
       - /mnt:exec
+    volumes:
+      # Allow running docker from inside the container (optional).
+      - /var/run/docker.sock:/var/run/docker.sock
+
 secrets:
   CI_STORAGE_PUBLIC_KEY:
     file: ./test-public-key
