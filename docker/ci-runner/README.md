@@ -11,7 +11,7 @@ self-hosted runners as you want. An example scenario:
    variables:
    - `GH_TOKEN` (required): PAT used to register the runner at github.com
    - `GH_REPOSITORY` (required): the repository this runner will serve
-   - `GH_LABELS` (required): labels added to this runner
+   - `GH_LABELS` (required): labels added to this runner, comma-separated
    - `TZ` (optional): timezone name
    - `FORWARD_HOST` (optional): some ports at localhost (provided in
      FORWARD_PORTS) will be forwarded to this host
