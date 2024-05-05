@@ -20,7 +20,7 @@ RUN true \
 # We want the default user to be root, to allow people extend the image with no
 # boilerplate. But when someone runs e.g. "docker compose exec bash -l", we want
 # the user to be "guest".
-RUN echo "cd ~guest && gosu guest:guest bash -l" > ~/.bash_profile
+RUN echo "cd ~guest && gosu guest bash -l" > ~/.bash_profile
 
 COPY --chmod=755 --chown=root:root entrypoint*.sh /root
 

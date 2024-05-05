@@ -18,4 +18,4 @@ done
 
 "$@"
 
-exec gosu guest:guest ~guest/entrypoint.sh
+exec gosu guest ~guest/entrypoint.sh

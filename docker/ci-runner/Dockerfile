@@ -32,7 +32,7 @@ RUN true \
     && apt-get install -y --no-install-recommends docker-ce docker-ce-cli containerd.io docker-compose-plugin \
     && sed -i -e "s/ulimit -Hn/ulimit -n/" /etc/init.d/docker
 
-# Add user "guest".
+# Add user "guest" with access to "docker" group.
 RUN true \
     && useradd -m guest -s /bin/bash \
     && usermod -aG docker guest
@@ -64,7 +64,7 @@ RUN true \
 # We want the default user to be root, to allow people extend the image with no
 # boilerplate. But when someone runs e.g. "docker compose exec bash -l", we want
 # the user to be "guest".
-RUN echo "cd ~guest && gosu guest:guest bash -l" > ~/.bash_profile
+RUN echo "cd ~guest && gosu guest bash -l" > ~/.bash_profile
 
 ADD --chmod=755 https://raw.githubusercontent.com/dimikot/ci-storage/main/ci-storage /usr/bin/ci-storage
 ADD --chmod=755 https://raw.githubusercontent.com/dimikot/signal-fanout/main/signal-fanout /usr/bin/signal-fanout
