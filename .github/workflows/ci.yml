@@ -14,6 +14,7 @@ jobs:
   # Tests ci-storage tool and action itself.
   ci-storage-tool-test:
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     steps:
       - uses: actions/checkout@v4
       - name: Create dummy file
@@ -98,6 +99,7 @@ jobs:
       - self-hosted
       - ${{ format('ci-storage-test-{0}-{1}', github.run_id, github.run_attempt) }}
     needs: ci-storage-tool-test
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
       - name: Run test job inside the self-hosted runner
@@ -117,6 +119,7 @@ jobs:
       - ci-storage-tool-test
       - build-and-boot-containers
       - spawn-job-test
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
       - uses: docker/setup-qemu-action@v3
@@ -158,6 +161,7 @@ jobs:
       - ci-storage-tool-test
       - build-and-boot-containers
       - spawn-job-test
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
       - uses: docker/setup-qemu-action@v3

@@ -34,7 +34,8 @@ RUN true \
 
 # Add user "guest".
 RUN true \
-    && useradd -m guest -s /bin/bash
+    && useradd -m guest -s /bin/bash \
+    && usermod -aG docker guest
 
 # Do stuff as user "guest".
 USER guest
