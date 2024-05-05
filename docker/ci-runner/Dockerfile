@@ -40,6 +40,7 @@ RUN true \
 # Do stuff as user "guest".
 USER guest
 RUN true \
+    && mkdir ~guest/.cache && chmod 700 ~guest/.cache \
     && mkdir ~guest/.ssh && chmod 700 ~guest/.ssh \
     && mkdir ~guest/actions-runner \
     && chown -R guest:guest ~guest \
