@@ -60,8 +60,9 @@ ones, so rsync can run efficiently.
     # Default: 14400 (4 hours)
     storage-max-age-sec: ''
 
-    # Id of the slot to store to or load from; use "*" to load a random
-    # most recent slot and skip if it does not exist.
+    # Id of the slot to store to or load from; use "*" to load a smart-random
+    # slot (e.g. most recent or best in terms of layer compatibility) and skip
+    # if it does not exist.
     # Default: $GITHUB_RUN_ID
     slot-id: ''
 

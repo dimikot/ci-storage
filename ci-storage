@@ -1,12 +1,14 @@
 #!/usr/bin/python3 -u
 from __future__ import annotations
-
 import argparse
+import collections
+import dataclasses
 import os.path
 import re
 import shlex
 import subprocess
 import sys
+import tempfile
 import textwrap
 import time
 import typing
@@ -14,6 +16,9 @@ import typing
 STORAGE_MAX_AGE_SEC_DEFAULT = 3600 * 4
 STORAGE_MAX_AGE_SEC_BAK = 60
 STORAGE_DIR_DEFAULT = "~/ci-storage"
+META_FILE = ".ci-storage.meta"
+LOCAL_META_FILE_DIR = "/tmp" if os.access("/tmp", os.W_OK) else tempfile.gettempdir()
+MAX_FULL_SNAPSHOT_HISTORY = 10
 
 
 #
@@ -74,7 +79,9 @@ def main():
         "--slot-id",
         type=str,
         required=True,
-        help='id of the slot to store to or load from; use "*" to load a random most recent slot and skip if it does not exist',
+        default=[],
+        action="append",
+        help='id of the slot to store to or load from; use "*" to load a smart-random slot (e.g. most recent or best in terms of layer compatibility) and skip if it does not exist; when loading, you may provide multiple --slot-id options to try loading them in order',
     )
     parser.add_argument(
         "--local-dir",
@@ -102,8 +109,8 @@ def main():
         action="store_true",
         help="if set, prints the list of transferred files",
     )
-
     args = parser.parse_intermixed_args()
+
     action: typing.Literal["store", "load"] = args.action
     storage_host: str | None = args.storage_host or None
     storage_dir: str = (
@@ -114,7 +121,7 @@ def main():
     storage_max_age_sec: int = int(
         args.storage_max_age_sec or str(STORAGE_MAX_AGE_SEC_DEFAULT)
     )
-    slot_id: str = args.slot_id
+    slot_ids: list[str] = " ".join(args.slot_id).split()
     local_dir: str = re.sub(r"/+$", "", args.local_dir)
     exclude: list[str] = [
         line for line in "\n".join(args.exclude).splitlines() if line.strip()
@@ -135,10 +142,12 @@ def main():
         storage_dir = os.path.expanduser(storage_dir)
 
     if action == "store":
+        if len(slot_ids) != 1:
+            parser.error(f"for {action} action, exactly one --slot-id is required")
         action_store(
             storage_host=storage_host,
             storage_dir=storage_dir,
-            slot_id=slot_id,
+            slot_id=slot_ids[0],
             local_dir=local_dir,
             exclude=exclude,
             layer=layer,
@@ -150,10 +159,12 @@ def main():
             max_age_sec=storage_max_age_sec,
         )
     if action == "load":
+        if not slot_ids:
+            parser.error(f"for {action} action, at one or many --slot-id is required")
         action_load(
             storage_host=storage_host,
             storage_dir=storage_dir,
-            slot_id=slot_id,
+            slot_ids=slot_ids,
             local_dir=local_dir,
             exclude=exclude,
             layer=layer,
@@ -162,82 +173,86 @@ def main():
 
 
 #
-# Stores the content of the local directory in the storage with the provided
-# slot id on a remote host.
-#
-def action_store(
-    *,
-    storage_host: str | None,
-    storage_dir: str,
-    slot_id: str,
-    local_dir: str,
-    exclude: list[str],
-    layer: list[str],
-    verbose: bool,
-):
-    if slot_id == "*":
-        raise UserException(f'slot_id="{slot_id}" is not allowed for "store" action')
-    slot_id = normalize_slot_id(slot_id)
-    slot_ids_and_ages = list_slots(
-        storage_host=storage_host,
-        storage_dir=storage_dir,
-    )
-    slot_id_recent = slot_ids_and_ages[0][0] if len(slot_ids_and_ages) else None
-    slot_id_tmp = f"{slot_id}.tmp.{int(time.time())}"
-    host, port = parse_host_port(storage_host)
-    check_call(
-        cmd=[
-            "rsync",
-            "--inplace",
-            *([f"--link-dest=../{slot_id_recent}/"] if slot_id_recent else []),
-            *build_rsync_args(
-                host=host,
-                port=port,
-                action="store",
-                exclude=exclude,
-                layer=layer,
-                verbose=verbose,
-            ),
-            f"{local_dir}/",
-            (f"{host}:" if host else "") + f"{storage_dir}/{slot_id_tmp}/",
-        ],
-        print_elapsed=True,
-    )
-    print(
-        check_output_script(
-            host=storage_host,
-            script=SCRIPTS["COMMIT_SLOT"],
-            args=[storage_dir, slot_id_tmp, slot_id],
-            indent=True,
-        ),
-        end="",
-    )
-
-
-#
 # Loads the content from the storage to the local directory.
+#
+# Multiple slot ids may be passed; in this case, they are checked in order, and
+# the 1st slot existing in the storage is loaded.
+#
+# One of the slot ids may be "*", which means that we need to load "some good
+# enough" slot from the storage:
+# - If we are loading a layer, then we try to use the slot id which "best
+#   matches" the full (non-layer) snapshot loaded in the past.
+# - If we are loading a full snapshot,
 #
 def action_load(
     *,
     storage_host: str | None,
     storage_dir: str,
-    slot_id: str,
+    slot_ids: list[str],
     local_dir: str,
     exclude: list[str],
     layer: list[str],
     verbose: bool,
 ):
-    if slot_id == "*":
-        slot_ids_and_ages = list_slots(
-            storage_host=storage_host,
-            storage_dir=storage_dir,
+    full_snapshot_history = None
+    if layer:
+        meta = SlotMeta.read_from(local_dir=local_dir)
+        full_snapshot_history = meta.full_snapshot_history
+
+    slot_infos = list_slots(
+        storage_host=storage_host,
+        storage_dir=storage_dir,
+    )
+
+    slot_id = ""
+    for id in map(normalize_slot_id, slot_ids):
+        prefix = f'Checking slot-id="{id}"...'
+        if id == "*":
+            if not slot_infos:
+                print(f"{prefix} storage has no slots, so exiting with a no-op")
+                return
+            elif full_snapshot_history is None:
+                slot_id = list(slot_infos.keys())[0]
+                print(
+                    f'{prefix} using the most recent slot-id="{slot_id}" for the full (non-layer) load'
+                )
+                break
+            elif len(full_snapshot_history) > 0:
+                print(
+                    f"{prefix} prioritizing slots from past full snapshot loading history..."
+                )
+                for id in full_snapshot_history:
+                    prefix = f'Checking slot-id="{id}" from history...'
+                    if id in slot_infos:
+                        slot_id = id
+                        print(f"{prefix} found in the storage, using it")
+                        break
+                    else:
+                        print(f"{prefix} not found in the storage")
+                if not slot_id:
+                    slot_id = list(slot_infos.keys())[0]
+                    print(
+                        f'None slots from past full snapshot loading history were found in the storage, so using just the most recent slot-id="{slot_id}"'
+                    )
+                break
+            else:
+                slot_id = list(slot_infos.keys())[0]
+                print(
+                    f'{prefix} no past loading history, so using just the most recent slot-id="{slot_id}"'
+                )
+                break
+        elif id in slot_infos:
+            slot_id = id
+            print(f"{prefix} found in the storage, using it")
+            break
+        else:
+            print(f"{prefix} not found in the storage")
+
+    if not slot_id:
+        raise UserException(
+            f"none of the provided slot id(s) were found in the storage, aborting"
         )
-        if len(slot_ids_and_ages) == 0:
-            print(f'No slots found, and slot-id="{slot_id}", so skipping.')
-            return
-        slot_id = slot_ids_and_ages[0][0]
-    else:
-        slot_id = normalize_slot_id(slot_id)
+
     host, port = parse_host_port(storage_host)
     check_call(
         cmd=[
@@ -255,6 +270,80 @@ def action_load(
         ],
         print_elapsed=True,
     )
+
+    if not layer:
+        slot_info = slot_infos[slot_id]
+        slot_info.meta.full_snapshot_history.insert(0, slot_id)
+        slot_info.meta.write_to(local_dir=local_dir)
+
+
+#
+# Stores the content of the local directory in the storage with the provided
+# slot id on a remote host.
+#
+def action_store(
+    *,
+    storage_host: str | None,
+    storage_dir: str,
+    slot_id: str,
+    local_dir: str,
+    exclude: list[str],
+    layer: list[str],
+    verbose: bool,
+):
+    slot_id = normalize_slot_id(slot_id)
+    if slot_id == "*":
+        raise UserException(f'slot_id="{slot_id}" is not allowed for "store" action')
+
+    meta = None
+    if not layer:
+        meta = SlotMeta.read_from(local_dir=local_dir)
+        meta.full_snapshot_history.insert(0, slot_id)
+
+    slot_infos = list_slots(
+        storage_host=storage_host,
+        storage_dir=storage_dir,
+    )
+
+    slot_recent = list(slot_infos.values())[0] if slot_infos else None
+    slot_id_tmp = f"{slot_id}.tmp.{int(time.time())}"
+    host, port = parse_host_port(storage_host)
+    check_call(
+        cmd=[
+            "rsync",
+            "--inplace",
+            *([f"--link-dest=../{slot_recent.id}/"] if slot_recent else []),
+            *build_rsync_args(
+                host=host,
+                port=port,
+                action="store",
+                exclude=exclude,
+                layer=layer,
+                verbose=verbose,
+            ),
+            f"{local_dir}/",
+            (f"{host}:" if host else "") + f"{storage_dir}/{slot_id_tmp}/",
+        ],
+        print_elapsed=True,
+    )
+
+    print(
+        check_output_script(
+            host=storage_host,
+            script=SCRIPTS["COMMIT_SLOT"],
+            args=[
+                storage_dir,
+                slot_id_tmp,
+                slot_id,
+                meta.serialize() if meta else "",
+            ],
+            indent=True,
+        ),
+        end="",
+    )
+
+    if meta:
+        meta.write_to(local_dir=local_dir)
 
 
 #
@@ -287,18 +376,25 @@ def list_slots(
     *,
     storage_host: str | None,
     storage_dir: str,
-) -> list[tuple[str, int]]:
-    slot_ids_and_ages: list[tuple[str, int]] = []
+) -> collections.OrderedDict[str, SlotInfo]:
+    slot_infos = collections.OrderedDict[str, SlotInfo]()
     lines = check_output_script(
         host=storage_host,
         script=SCRIPTS["LIST_SLOTS"],
         args=[storage_dir],
     )
     for line in lines.splitlines():
-        match = re.match(r"^(.+) (\d+)$", line)
+        match = re.match(r"^(\S+) (\d+) (.*)$", line)
         if match:
-            slot_ids_and_ages.append((match.group(1), int(match.group(2))))
-    return slot_ids_and_ages
+            slot_id = match.group(1)
+            slot_infos[slot_id] = SlotInfo(
+                id=slot_id,
+                age=int(match.group(2)),
+                meta=SlotMeta.deserialize(
+                    match.group(3).encode().decode("unicode_escape")
+                ),
+            )
+    return slot_infos
 
 
 #
@@ -307,7 +403,7 @@ def list_slots(
 def normalize_slot_id(
     slot_id: str,
 ) -> str:
-    return re.sub(r"[^a-zA-Z0-9_-]", "_", slot_id)
+    return re.sub(r"[^a-zA-Z0-9_-]", "_", slot_id) if slot_id != "*" else slot_id
 
 
 #
@@ -395,7 +491,12 @@ def cmd_to_debug_str(
     cmd: list[str],
 ) -> str:
     inv = dict((v, k) for k, v in SCRIPTS.items())
-    return shlex.join([f"<{inv[arg]}>" if arg in inv else arg for arg in cmd])
+    return shlex.join(
+        [
+            f"<{inv[arg]}>" if arg in inv else arg.rstrip().replace("\n", "\\n")
+            for arg in cmd
+        ]
+    )
 
 
 #
@@ -469,6 +570,7 @@ def build_rsync_args(
         *(["--modify-window=-1"] if version_supports_nanoseconds else []),
         *([] if layer and action == "load" else ["--delete"]),
         *(["-vv"] if verbose and layer else ["-v"] if verbose else []),
+        f"--exclude={META_FILE}",
         *[f"--exclude={pattern}" for pattern in exclude],
         *(
             [
@@ -484,6 +586,14 @@ def build_rsync_args(
 
 
 #
+# Returns unique elements of a list preserving the order.
+#
+def unique(arr: list[str]) -> list[str]:
+    seen: set[str] = set()
+    return [x for x in arr if not (x in seen or seen.add(x))]
+
+
+#
 # A helper class for ArgumentParser.
 #
 class ParagraphFormatter(argparse.HelpFormatter):
@@ -494,6 +604,66 @@ class ParagraphFormatter(argparse.HelpFormatter):
                 for paragraph in textwrap.dedent(text).split("\n\n")
             ]
         )
+
+
+#
+# A meta information about some particular full (non-layer) slot. Can serialize
+# and deserialize itself to/from a string using an env-like format.
+#
+# On local machine, the meta file is stored in LOCAL_META_FILE_DIR (which is
+# typically "/tmp"), and the name of that file is suffixes with some hash
+# derivative of local_dir. This allows to not pollute local_dir with extra files
+# that may be not in e.g. .gitignore.
+#
+@dataclasses.dataclass
+class SlotMeta:
+    # Each time a dir is loaded from some slot (using "*" or by a concrete slot
+    # id), we prepend slot id to this property.
+    full_snapshot_history: list[str] = dataclasses.field(default_factory=list[str])
+
+    def serialize(self) -> str:
+        serialized = ""
+        serialized += f"full_snapshot_history={' '.join(unique(self.full_snapshot_history)[0:MAX_FULL_SNAPSHOT_HISTORY])}\n"
+        return serialized
+
+    @staticmethod
+    def deserialize(serialized: str) -> SlotMeta:
+        self = SlotMeta()
+        for line in serialized.splitlines():
+            line = line.rstrip()
+            match = re.match(r"^([^=]+)=(.*)$", line.rstrip())
+            if match:
+                key: str = match.group(1).strip()
+                value: str = match.group(2).strip()
+                if key == "full_snapshot_history":
+                    self.full_snapshot_history = unique(value.split())
+        return self
+
+    def write_to(self, *, local_dir: str) -> None:
+        with open(self._path(local_dir), "w") as f:
+            f.write(self.serialize())
+
+    @classmethod
+    def read_from(cls, *, local_dir: str) -> SlotMeta:
+        try:
+            with open(cls._path(local_dir), "r") as f:
+                return SlotMeta.deserialize(f.read())
+        except FileNotFoundError:
+            return SlotMeta()
+
+    @staticmethod
+    def _path(local_dir: str) -> str:
+        return f"{LOCAL_META_FILE_DIR}/{META_FILE}.{normalize_slot_id(local_dir)}"
+
+
+#
+# An information returned from list_slots().
+#
+@dataclasses.dataclass
+class SlotInfo:
+    id: str
+    age: int
+    meta: SlotMeta
 
 
 #
@@ -513,12 +683,22 @@ SLOT_INFOS = textwrap.dedent(
     sub slot_infos {
         my ($storage_dir) = @_;
         return
-            sort { $a->{age_sec} <=> $b->{age_sec} }
+            sort {
+                $a->{age_sec} <=> $b->{age_sec}
+                or
+                $b->{slot_id} cmp $a->{slot_id}
+            }
             map {
                 my $dir = $_;
                 $dir =~ s{/+$}{}s;
                 my $inode_ctime = (stat($dir))[10];
                 if ($inode_ctime) {
+                    my $meta = "";
+                    if (open(my $fh, "<", "$dir/%(META_FILE)s")) {
+                        local $/ = undef;
+                        $meta = <$fh>;
+                        close($fh);
+                    }
                     my $slot_id = $dir;
                     $slot_id =~ s{^.*/}{}s;
                     {
@@ -526,6 +706,7 @@ SLOT_INFOS = textwrap.dedent(
                         inode_ctime => $inode_ctime,
                         age_sec => time() - $inode_ctime,
                         dir => $dir,
+                        meta => $meta,
                         is_garbage => $slot_id =~ /\./ ? 1 : 0,
                         is_bak => $slot_id =~ /\.bak\.\d+$/s ? 1 : 0,
                     };
@@ -536,6 +717,7 @@ SLOT_INFOS = textwrap.dedent(
             glob("$storage_dir/*/");
     }
     """.strip()
+    % {"META_FILE": META_FILE}
 )
 
 #
@@ -546,10 +728,11 @@ SLOT_INFOS = textwrap.dedent(
 # - If has native fork() support.
 #
 SCRIPTS = {
-    # The script to list existing non-garbage slot ids and their ages in
-    # seconds. Most recent slots are on top of the list. It also pre-creates the
-    # storage directory, and changes ctime of the most recent slot to the
-    # present time (so it will unlikely be garbage collected soon).
+    # The script to list existing non-garbage slot ids, their ages in seconds
+    # and meta content (where "\" has a traditional escaping meaning). Most
+    # recent slots are on top of the list. It also pre-creates the storage
+    # directory, and changes ctime of the most recent slot to the present time
+    # (so it will unlikely be garbage collected soon).
     "LIST_SLOTS": textwrap.dedent(
         r"""
         use strict;
@@ -568,7 +751,11 @@ SCRIPTS = {
             my $newest_inode_ctime = $slot_infos[0]{inode_ctime};
             utime(time(), time(), $newest_dir) or die("utime $newest_dir: $!\n");
             foreach (@slot_infos) {
-                print("$_->{slot_id} $_->{age_sec}\n");
+                my $meta_encoded = $_->{meta};
+                $meta_encoded =~ s/\\/\\\\/g;
+                $meta_encoded =~ s/\r/\\r/g;
+                $meta_encoded =~ s/\n/\\n/g;
+                print("$_->{slot_id} $_->{age_sec} $meta_encoded\n");
             }
             print STDERR "returned ".scalar(@slot_infos)." slot(s) and also touched the newest slot $newest_dir (inode_ctime=$newest_inode_ctime, age_sec=$newest_age_sec)\n";
         }
@@ -582,16 +769,27 @@ SCRIPTS = {
         my $storage_dir = $ARGV[0] or die("storage_dir argument required\n");
         my $slot_id_tmp = $ARGV[1] or die("slot_id_tmp argument required\n");
         my $slot_id_dst = $ARGV[2] or die("slot_id_dst argument required\n");
+        my $meta = $ARGV[3];
         length($storage_dir) >= 3 or die("storage_dir is suspiciously short\n");
+        defined($meta) or die("meta argument required\n");
         my $slot_dir_tmp = "$storage_dir/$slot_id_tmp";
         my $slot_dir_dst = "$storage_dir/$slot_id_dst";
         my $slot_dir_bak = "$storage_dir/$slot_id_dst.bak." . time();
+        my $META_FILE = "$slot_dir_tmp/%(META_FILE)s";
         -d $slot_dir_bak and (system("rm", "-rf", $slot_dir_bak) == 0 or die("rm -rf $slot_dir_bak: $!\n"));
         -d $slot_dir_dst and (system("mv", $slot_dir_dst, $slot_dir_bak) == 0 or die("mv $slot_dir_dst $slot_dir_bak: $!\n"));
+        if ($meta) {
+            open(my $fh, ">", $META_FILE) or die("open $META_FILE: $!\n");
+            print($fh $meta) or die("write $META_FILE: $!\n");
+            close($fh) or die("close $META_FILE: $!\n");
+        } elsif (-f $META_FILE) {
+            unlink($META_FILE) or die("unlink $META_FILE: $!\n");
+        }
         system("mv", $slot_dir_tmp, $slot_dir_dst) == 0 or die("mv $slot_dir_tmp $slot_dir_dst: $!\n");
         print STDERR "renamed $slot_dir_tmp to $slot_dir_dst\n";
         utime(time(), time(), $slot_dir_dst) or die("utime $slot_dir_dst: $!\n");
         """.strip()
+        % {"META_FILE": META_FILE},
     ),
     # This script is launched in background on the storage host to cleanup old or
     # broken slots.

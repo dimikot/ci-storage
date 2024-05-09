@@ -11,8 +11,16 @@ on:
       - "v*"
 
 jobs:
-  # Tests ci-storage tool and action itself.
+  # Tests command-line tool using tests scaffolding.
   ci-storage-tool-test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - run: tests/all.sh
+
+  # Tests action itself.
+  ci-storage-action-test:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
@@ -67,7 +75,9 @@ jobs:
   # for jobs with ci-storage-test tag to pick up (based on Dockerfile image).
   build-and-boot-containers:
     runs-on: ubuntu-latest
-    needs: ci-storage-tool-test
+    needs:
+      - ci-storage-tool-test
+      - ci-storage-action-test
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@v4
@@ -98,7 +108,9 @@ jobs:
     runs-on:
       - self-hosted
       - ${{ format('ci-storage-test-{0}-{1}', github.run_id, github.run_attempt) }}
-    needs: ci-storage-tool-test
+    needs:
+      - ci-storage-tool-test
+      - ci-storage-action-test
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
@@ -117,6 +129,7 @@ jobs:
     if: github.event_name != 'pull_request'
     needs:
       - ci-storage-tool-test
+      - ci-storage-action-test
       - build-and-boot-containers
       - spawn-job-test
     timeout-minutes: 15
@@ -159,6 +172,7 @@ jobs:
     if: github.event_name != 'pull_request'
     needs:
       - ci-storage-tool-test
+      - ci-storage-action-test
       - build-and-boot-containers
       - spawn-job-test
     timeout-minutes: 15
