@@ -20,7 +20,7 @@ export OUT=/tmp/ci-storage/out.txt
 export META_FILE=/tmp/.ci-storage.meta._tmp_ci-storage_local_dir
 export error=0
 
-rm -rf $STORAGE_DIR* $LOCAL_DIR $OUT /tmp/.ci-storage.meta*
+rm -rf $STORAGE_DIR* $LOCAL_DIR* $OUT /tmp/.ci-storage.meta*
 mkdir -p $STORAGE_DIR $LOCAL_DIR
 touch $OUT
 

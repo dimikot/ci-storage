@@ -196,6 +196,7 @@ def action_load(
 ):
     full_snapshot_history = None
     if layer:
+        os.makedirs(local_dir, exist_ok=True)
         meta = SlotMeta.read_from(local_dir=local_dir)
         full_snapshot_history = meta.full_snapshot_history
 
