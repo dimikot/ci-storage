@@ -26,7 +26,7 @@ MAX_FULL_SNAPSHOT_HISTORY = 10
 #
 def main():
     parser = argparse.ArgumentParser(
-        description="""\
+        description="""
             Quickly stores the content of some local directory in the storage
             with the provided slot id on a remote host, or loads the content
             from the storage to that directory. The tool makes some smart
@@ -599,6 +599,7 @@ def unique(arr: list[str]) -> list[str]:
 #
 class ParagraphFormatter(argparse.HelpFormatter):
     def _fill_text(self, text: str, width: int, indent: str) -> str:
+        text = re.sub(r"^ *\n", "", text)
         return "\n\n".join(
             [
                 textwrap.indent(textwrap.fill(paragraph, width), indent)
