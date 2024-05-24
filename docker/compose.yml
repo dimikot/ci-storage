@@ -12,7 +12,9 @@ services:
     ports:
       - 10022:22
     environment:
-      - TZ=America/Los_Angeles
+      - GH_TOKEN
+      - GH_REPOSITORIES
+      - TZ
     secrets:
       - CI_STORAGE_PUBLIC_KEY
     tmpfs:

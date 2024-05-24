@@ -10,7 +10,8 @@ self-hosted runners as you want. An example scenario:
    boot) and use the image you just published. Configure its environment
    variables:
    - `GH_TOKEN` (required): PAT used to register the runner at github.com
-   - `GH_REPOSITORY` (required): the repository this runner will serve
+   - `GH_REPOSITORY` (required): the repository this runner will serve; format:
+     {owner}/{repo}
    - `GH_LABELS` (required): labels added to this runner, comma-separated
    - `TZ` (optional): timezone name
    - `FORWARD_HOST` (optional): some ports at localhost (provided in

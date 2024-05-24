@@ -6,6 +6,9 @@ infra. This server is needed for ci-storage tool to work.
 1. Run this container on a central shared host of your self-hosted runners CI
    infra, together with other shared containers (like databases etc.).
 2. Configure env variables and secrets accordingly:
+   - `GH_TOKEN` (optional): PAT at github.com to work with GH_REPOSITORIES
+   - `GH_REPOSITORIES` (optional): space-delimited list of repositories (format:
+     {owner}/{repo}) to pull stats about runners and to remove offline runners
    - `TZ` (optional): timezone name
 3. Pass secrets:
    - `CI_STORAGE_PUBLIC_KEY` (optional): pass this secret or mount a file from
