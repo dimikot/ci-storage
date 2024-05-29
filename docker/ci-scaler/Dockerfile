@@ -1,18 +1,17 @@
 ARG BASE_IMAGE="ubuntu:22.04"
-
 FROM $BASE_IMAGE
 
+ENV GH_TOKEN=""
+ENV ASGS=""
+ENV DOMAIN=""
 ENV TZ=""
-# SECRET: CI_STORAGE_PUBLIC_KEY
 
 ENV DEBIAN_FRONTEND=noninteractive
 
 RUN true \
     && apt-get update -y \
     && apt-get install -y --no-install-recommends \
-      openssh-server \
       awscli jq gh rsync python3 python3-yaml rsyslog systemctl tzdata gosu less mc git curl wget pv psmisc unzip vim nano telnet net-tools apt-transport-https ca-certificates locales gnupg lsb-release \
-    && sed -i -e "s|#PermitRootLogin.*|PermitRootLogin no|" /etc/ssh/sshd_config \
     && useradd -m guest -s /bin/bash \
     && mkdir ~guest/.ssh && chmod 700 ~guest/.ssh \
     && chown -R guest:guest ~guest
@@ -23,7 +22,9 @@ RUN true \
 RUN echo "cd ~guest && gosu guest bash -l" > ~/.bash_profile
 
 COPY --chmod=755 --chown=root:root root/entrypoint*.sh /root
+COPY --chmod=755 --chown=guest:guest guest/entrypoint*.sh /home/guest
+COPY --chown=guest:guest guest/scaler/ /home/guest/scaler/
 
 WORKDIR /root
-EXPOSE 22/tcp
+EXPOSE 8088/tcp
 ENTRYPOINT ["/root/entrypoint.sh"]

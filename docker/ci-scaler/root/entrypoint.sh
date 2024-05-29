@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# A container which represents one ci-runner instance.
+# A container which orchestrates and scales ci-runner instances.
 #
 set -u -e
 

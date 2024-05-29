@@ -23,37 +23,12 @@ aws_metadata_curl() {
   fi
 }
 
-# Publishes a metric to CloudWatch. Returns an error exit code in case we are
-# running not in AWS infra (i.e. there is no CloudWatch available), otherwise
-# always succeeds, independently on aws CLI exit code (for caller simplicity).
-aws_cloudwatch_put_metric_data() {
-  local metric="$1"
-  local value="$2"
-  local dimensions="$3"
-  if [[ "${REGION-unset}" == "unset" ]]; then
-    REGION=$(aws_metadata_curl latest/meta-data/placement/availability-zone | sed "s/[a-z]$//")
-  fi
-  if [[ "$REGION" == "" ]]; then
-    return 1
-  fi
-  aws cloudwatch put-metric-data \
-    --metric-name="$metric" \
-    --namespace="ci-storage/metrics" \
-    --value="$value" \
-    --storage-resolution="1" \
-    --unit="None" \
-    --dimensions="$dimensions" \
-    --region="$REGION" \
-    || true
-}
-
 # Prints the current date in the same format as the GitHub Actions runner does.
 nice_date() {
   date +"%Y-%m-%d %H:%M:%S %Z"
 }
 
 export -f aws_metadata_curl
-export -f aws_cloudwatch_put_metric_data
 export -f nice_date
 
 nice_date
