@@ -17,7 +17,9 @@ jobs:
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@v4
-      - run: tests/all.sh
+      - run: |
+          exec 2>&1; set -e -o xtrace
+          tests/all.sh
 
   # Tests action itself.
   ci-storage-action-test:
@@ -70,6 +72,18 @@ jobs:
           [[ "$(cat dummy.txt)" == "dummy" ]] || { echo "dummy.txt must be kept"; exit 1; }
           [[ "$(cat dir/subdir/layer.txt)" == "layer" ]] || { echo "layer.txt must be restored"; exit 1; }
 
+  # Tests ci-scaler logic.
+  ci-scaler-test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          exec 2>&1; set -e -o xtrace
+          docker/ci-scaler/guest/scaler/tests/all.sh
+        env:
+          GH_TOKEN: ${{ secrets.CI_PAT }}
+
   # Builds and boots a ci-runner container inside GitHub's infra. Once it's
   # settled, there is a running container with one self-hosted runner waiting
   # for jobs with ci-storage-test tag to pick up (based on Dockerfile image).
@@ -78,6 +92,7 @@ jobs:
     needs:
       - ci-storage-tool-test
       - ci-storage-action-test
+      - ci-scaler-test
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@v4
@@ -112,6 +127,7 @@ jobs:
     needs:
       - ci-storage-tool-test
       - ci-storage-action-test
+      - ci-scaler-test
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
@@ -131,6 +147,7 @@ jobs:
     needs:
       - ci-storage-tool-test
       - ci-storage-action-test
+      - ci-scaler-test
       - build-and-boot-containers
       - spawn-job-test
     timeout-minutes: 15
@@ -174,6 +191,7 @@ jobs:
     needs:
       - ci-storage-tool-test
       - ci-storage-action-test
+      - ci-scaler-test
       - build-and-boot-containers
       - spawn-job-test
     timeout-minutes: 15

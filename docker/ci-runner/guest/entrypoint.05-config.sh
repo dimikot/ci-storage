@@ -27,7 +27,7 @@ if [[ "$name" == "" ]]; then
   instance_id=$(aws_metadata_curl latest/meta-data/instance-id)
   if [[ "$instance_id" != "" ]]; then
     hash="${instance_id##i-}"
-    name="$name_prefix-${hash:0:8}-$(date '+%m%d-%H%M')"
+    name="$name_prefix-$hash-$(date '+%m%d-%H%M')"
   else
     name="$name_prefix-$(date '+%Y%m%d-%H%M%S')-$((RANDOM+10000))"
   fi
