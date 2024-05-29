@@ -1,4 +1,22 @@
 services:
+  ci-scaler:
+    build:
+      context: ci-scaler
+      dockerfile: Dockerfile
+    stop_grace_period: 1m
+    healthcheck:
+      test: ["CMD", "bash", "-c", "netstat -ltn | grep -c :8088"]
+      interval: 1s
+      timeout: 3s
+      retries: 10
+    ports:
+      - 18088:8088
+    environment:
+      - GH_TOKEN
+      - ASGS
+      - DOMAIN
+      - TZ
+
   ci-storage:
     build:
       context: ci-storage
@@ -12,8 +30,6 @@ services:
     ports:
       - 10022:22
     environment:
-      - GH_TOKEN
-      - GH_REPOSITORIES
       - TZ
     secrets:
       - CI_STORAGE_PUBLIC_KEY
