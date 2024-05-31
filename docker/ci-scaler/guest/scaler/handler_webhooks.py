@@ -1,3 +1,4 @@
+import dataclasses
 import email
 import email.message
 import hashlib
@@ -11,6 +12,7 @@ from api_gh import (
     gh_predict_workflow_labels,
     gh_webhook_ensure_absent,
     gh_webhook_ensure_exists,
+    gh_webhook_ping,
 )
 from api_aws import DRY_RUN_MSG, aws_autoscaling_increment_desired_capacity
 from helpers import (
@@ -34,13 +36,28 @@ IGNORE_KEYS = [
     "enterprise",
     "action",
 ]
+URL_PATH = "/ci-storage"
+SERVICE_ACTION_INTERVAL_SEC = 10
+
+
+@dataclasses.dataclass
+class Webhook:
+    url: str
+    last_delivery_at: int | None
+
+
+@dataclasses.dataclass
+class ServiceAction:
+    prev_at: int
+    iteration: int = 0
 
 
 class HandlerWebhooks:
     def __init__(self, *, domain: str, asg_specs: list[AsgSpec]):
         self.domain = domain
         self.asg_specs = asg_specs
-        self.webhooks: dict[str, str] = {}
+        self.webhooks: dict[str, Webhook] = {}
+        self.service_action = ServiceAction(prev_at=int(time.time()))
         self.secret = gh_get_webhook_secret()
         self.duplicated_events = ExpiringDict[tuple[int, int], float](
             ttl=DUPLICATED_EVENTS_TTL
@@ -57,7 +74,7 @@ class HandlerWebhooks:
         if not self.secret:
             return self
         for repository in list(set(asg_spec.repository for asg_spec in self.asg_specs)):
-            url = f"https://{self.domain}/ci-storage"
+            url = f"https://{self.domain}{URL_PATH}"
             with logged_result(doing=f"Registering webhook for {repository}: {url}"):
                 gh_webhook_ensure_exists(
                     repository=repository,
@@ -65,13 +82,32 @@ class HandlerWebhooks:
                     secret=self.secret,
                     events=[WORKFLOW_RUN_EVENT],
                 )
-                self.webhooks[repository] = url
+                self.webhooks[repository] = Webhook(url=url, last_delivery_at=None)
         return self
 
     def __exit__(self, *_: Any):
-        for repository, url in self.webhooks.items():
-            log(f"Deleting webhook {url} for {repository}")
-            gh_webhook_ensure_absent(repository=repository, url=url)
+        for repository, webhook in self.webhooks.items():
+            with logged_result(
+                swallow=True,
+                doing=f"Deleting webhook for {repository}: {webhook.url}",
+            ):
+                gh_webhook_ensure_absent(repository=repository, url=webhook.url)
+
+    def service_actions(self):
+        now = int(time.time())
+        if now > self.service_action.prev_at + SERVICE_ACTION_INTERVAL_SEC:
+            i = self.service_action.iteration
+            self.service_action.iteration += 1
+            self.service_action.prev_at = now
+            webhooks = [*self.webhooks.items()]
+            if webhooks:
+                repository, webhook = webhooks[i % len(webhooks)]
+                if webhook.last_delivery_at is None:
+                    with logged_result(
+                        swallow=True,
+                        doing=f"Sending additional PING to webhook for {repository}: {webhook.url}",
+                    ):
+                        gh_webhook_ping(repository=repository, url=webhook.url)
 
     def handle(
         self,
@@ -82,6 +118,10 @@ class HandlerWebhooks:
         action = data.get("action")
         event_payload = data.get(WORKFLOW_RUN_EVENT)
         name = event_payload.get("name") if event_payload else None
+        repository: str | None = data.get("repository", {}).get("full_name", None)
+
+        if repository in self.webhooks:
+            self.webhooks[repository].last_delivery_at = int(time.time())
 
         keys = [k for k in data.keys() if k not in IGNORE_KEYS]
         if keys:
@@ -93,6 +133,9 @@ class HandlerWebhooks:
 
         if "hook" in data:
             return handler.send_json(202, message='ignoring service "hook" event')
+
+        if not repository:
+            return handler.send_json(202, message="ignoring event with not repository")
 
         if handler.client_address[0] == "127.0.0.1" and not event_payload:
             match = re.match(
@@ -124,7 +167,8 @@ class HandlerWebhooks:
         if event_payload:
             if action != "requested" and action != "in_progress":
                 return handler.send_json(
-                    202, message="ignoring non-requested/in_progress event"
+                    202,
+                    message="ignoring action which is not requested/in_progress",
                 )
 
             event_key = (int(event_payload["id"]), int(event_payload["run_attempt"]))
@@ -135,7 +179,6 @@ class HandlerWebhooks:
                     message=f"this event has already been processed at {time.ctime(processed_at)}",
                 )
 
-            repository = str(data["repository"]["full_name"])
             head_sha = str(event_payload["head_sha"])
             path = str(event_payload["path"])
 
@@ -183,9 +226,10 @@ class HandlerWebhooks:
                 + (f" {DRY_RUN_MSG}" if not has_aws else ""),
             )
         else:
-            return handler.send_error(
-                404,
-                f"No matching auto-scaling group(s) found for repository {repository} and labels {[*labels.keys()]}",
+            # Most likely, it's a GitHub-hosted action runner's label.
+            return handler.send_json(
+                202,
+                message=f"Ignored: no matching auto-scaling group(s) found for repository {repository} and labels {[*labels.keys()]}",
             )
 
 

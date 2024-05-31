@@ -82,7 +82,6 @@ def gh_webhook_ensure_exists(
     secret: str,
     events: list[str],
 ):
-    gh_webhook_ensure_absent(repository=repository, url=url)
     try:
         gh_api(
             "-XPOST",
@@ -98,7 +97,7 @@ def gh_webhook_ensure_exists(
             },
         )
     except subprocess.CalledProcessError as e:
-        if e.stdout.find(b"Hook already exists") == -1:
+        if "Hook already exists" not in e.stdout:
             raise
 
 
@@ -107,14 +106,25 @@ def gh_webhook_ensure_absent(
     repository: str,
     url: str,
 ):
-    ids = gh_api(
+    id = gh_webhook_get_id(repository=repository, url=url)
+    if id:
+        gh_api("-XDELETE", f"/repos/{repository}/hooks/{id}")
+
+
+def gh_webhook_get_id(*, repository: str, url: str) -> str | None:
+    ids: list[str] = gh_api(
         f"/repos/{repository}/hooks",
         "--paginate",
         "--jq",
         f"[.[] | select(.config.url=={json.dumps(url)}) | .id]",
     )
-    for id in ids:
-        gh_api("-XDELETE", f"/repos/{repository}/hooks/{id}")
+    return ids[0] if ids else None
+
+
+def gh_webhook_ping(*, repository: str, url: str):
+    id = gh_webhook_get_id(repository=repository, url=url)
+    if id:
+        gh_api("-XPOST", f"/repos/{repository}/hooks/{id}/pings")
 
 
 def gh_fetch_workflow(

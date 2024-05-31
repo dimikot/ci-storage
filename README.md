@@ -7,6 +7,7 @@ This repository is a combination of several tools which work in unison:
 - [Action: ci-storage](#action-ci-storage). A GitHub action which uses ci-storage command-line tool.
 - [Command-line tool: ci-storage](https://github.com/dimikot/ci-storage/blob/main/ci-storage). The tool itself. It can be used stand-alone too.
 - [Docker image: ci-storage](https://github.com/dimikot/ci-storage/tree/main/docker/ci-storage). Allows to launch ci-storage part of self-hosted runners infra.
+- [Docker image: ci-scaler](https://github.com/dimikot/ci-storage/tree/main/docker/ci-scaler). Scales runners based on GitHub's webhook signal using various heuristics.
 - [Docker image: ci-runner](https://github.com/dimikot/ci-storage/tree/main/docker/ci-runner). Allows to launch self-hosted runners themselves.
 
 ## Action: ci-storage
@@ -155,6 +156,15 @@ A part of self-hosted runners infra representing the storage for ci-storage tool
 
 - [See README](https://github.com/dimikot/ci-storage/tree/main/docker/ci-storage)
 - [See Docker image: dimikot/ci-storage](https://github.com/dimikot/ci-storage/pkgs/container/ci-storage)
+
+
+## Docker image: ci-scaler
+
+A part of self-hosted runners infra which dynamically launches more self-hosted
+runner spot instances when needed, recycles idle resources etc.
+
+- [See README](https://github.com/dimikot/ci-storage/tree/main/docker/ci-scaler)
+- [See Docker image: dimikot/ci-scaler](https://github.com/dimikot/ci-storage/pkgs/container/ci-scaler)
 
 
 ## Docker image: ci-runner

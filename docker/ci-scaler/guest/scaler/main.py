@@ -141,6 +141,7 @@ def main():
             httpd.allow_reuse_port = True
             httpd.server_bind()
             httpd.server_activate()
+            httpd.service_actions = webhooks.service_actions
             log(f"Listening for webhook events on port {port}")
             thread = threading.Thread(
                 target=lambda: wrap_main(poll_thread),
