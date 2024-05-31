@@ -6,6 +6,7 @@ from api_gh import (
     gh_predict_workflow_labels,
     gh_runner_ensure_absent,
     gh_webhook_ensure_absent,
+    gh_webhook_ping,
     gh,
 )
 from unittest import TestCase
@@ -35,6 +36,9 @@ class Test(TestCase):
 
     def test_gh_webhook_ensure_exists(self):
         pass
+
+    def test_gh_webhook_ping(self):
+        gh_webhook_ping(repository=self.repository, url="https://example.com")
 
     def test_gh_webhook_ensure_absent(self):
         gh_webhook_ensure_absent(repository=self.repository, url="https://example.com")
