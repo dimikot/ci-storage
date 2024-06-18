@@ -18,7 +18,8 @@ if [[ "$FORWARD_HOST" != "" && "$FORWARD_PORTS" != "" ]]; then
     else
       tcp_lines+=("listen ${proto}_${port}")
       tcp_lines+=("  bind 127.0.0.1:$port")
-      tcp_lines+=("  server server1 $FORWARD_HOST:$port resolvers res")
+      # ipv4 is needed for e.g. host.docker.internal
+      tcp_lines+=("  server server1 $FORWARD_HOST:$port resolvers res resolve-prefer ipv4")
       tcp_lines+=("  mode $proto")
     fi
   done
