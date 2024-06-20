@@ -21,17 +21,13 @@ set -u -e
 
 cd ~/actions-runner
 
-name=$(cat .name 2>/dev/null || true)
-if [[ "$name" == "" ]]; then
-  name_prefix="ci-storage"
-  instance_id=$(aws_metadata_curl latest/meta-data/instance-id)
-  if [[ "$instance_id" != "" ]]; then
-    hash="${instance_id##i-}"
-    name="$name_prefix-$hash-$(date '+%m%d-%H%M')"
-  else
-    name="$name_prefix-$(date '+%Y%m%d-%H%M%S')-$((RANDOM+10000))"
-  fi
-  echo "$name" > .name
+name_prefix="ci-storage"
+instance_id=$(aws_metadata_curl latest/meta-data/instance-id)
+if [[ "$instance_id" != "" ]]; then
+  hash="${instance_id##i-}"
+  name="$name_prefix-$hash-$(date '+%m%d-%H%M')"
+else
+  name="$name_prefix-$(date '+%Y%m%d-%H%M%S')-$((RANDOM+10000))"
 fi
 
 rm -f .runner
