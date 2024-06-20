@@ -38,4 +38,10 @@ services:
 
 One ci-scaler container may serve multiple GitHub repositories.
 
+To enter the container, run e.g.:
+
+```
+docker compose exec ci-scaler bash -l
+```
+
 See also https://github.com/dimikot/ci-storage

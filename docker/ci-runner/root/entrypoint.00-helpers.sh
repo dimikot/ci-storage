@@ -4,6 +4,9 @@
 #
 set -u -e
 
+# GitHub Runner's work directory (encouraged to be mounted on tmpfs).
+export WORK_DIR="/mnt"
+
 # We don't use ec2metadata CLI tool, because it does not allow to configure
 # timeout. In case the container is run outside of AWS infra (e.g. during local
 # development), the absense of timeout causes problems.

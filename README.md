@@ -54,7 +54,7 @@ ones, so rsync can run efficiently.
     storage-host: ''
 
     # Storage directory on the storage host.
-    # Default: /mnt/{owner}/{repo} in the storage host's user home.
+    # Default: /mnt/{owner}/{repo}.
     storage-dir: ''
 
     # Remove slots created earlier than this many seconds ago.

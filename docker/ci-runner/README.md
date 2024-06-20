@@ -66,14 +66,13 @@ services:
       # An address of ci-storage service to pull the slots from.
       - CI_STORAGE_HOST=127.0.0.1:10022
     volumes:
-      # Makes the content of /mnt survive container re-creation on upgrades.
-      - ci-runner-mnt:/mnt
       # ~/.ssh/ci-storage must exist on the docker host to access ci-storage
       # remote container at $FORWARD_HOST
       - ~/.ssh/ci-storage:/run/secrets/CI_STORAGE_PRIVATE_KEY
-volumes:
-  ci-runner-mnt:
-    external: false
+    tmpfs:
+      # Having work directory on tmpfs makes latency predictable, which is very
+      # handy while debugging the CI perf bottlenecks.
+      - /mnt:exec
 ```
 
 Example for your custom Dockerfile mentioned above. This Dockerfile allows to
@@ -90,7 +89,6 @@ RUN true \
 COPY --chmod=755 --chown=root:root root/entrypoint*.sh /root
 COPY --chmod=755 --chown=guest:guest guest/entrypoint*.sh /home/guest
 ```
-
 
 The container in this Dockerfile serves only one particular GitHub repository
 (controlled by `GH_REPOSITORY` environment variable at boot time). To serve
