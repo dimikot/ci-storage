@@ -1,3 +1,8 @@
+#
+# This compose.yml file is used for local testing. You can also use it as a
+# template for your own deployment. See also README.md files with more examples.
+#
+
 services:
   ci-scaler:
     build:
@@ -31,10 +36,10 @@ services:
       - 10022:22
     environment:
       - TZ
+    volumes:
+      - ci-storage-mnt:/mnt
     secrets:
       - CI_STORAGE_PUBLIC_KEY
-    tmpfs:
-      - /mnt:exec
 
   ci-runner:
     build:
@@ -59,6 +64,10 @@ services:
       - CI_STORAGE_PRIVATE_KEY
     tmpfs:
       - /mnt:exec
+
+volumes:
+  ci-storage-mnt:
+    external: false
 
 secrets:
   CI_STORAGE_PUBLIC_KEY:

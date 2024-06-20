@@ -37,12 +37,12 @@ jobs:
         uses: ./
         with:
           action: store
-          storage-dir: ~/mnt
+          storage-dir: ~/storage-dir
       - name: Test store (layer)
         uses: ./
         with:
           action: store
-          storage-dir: ~/mnt
+          storage-dir: ~/storage-dir
           layer-name: my-layer
           layer-include: layer.txt
       - name: Remove dummy file
@@ -51,11 +51,11 @@ jobs:
         uses: ./
         with:
           action: load
-          storage-dir: ~/mnt
+          storage-dir: ~/storage-dir
       - name: Check that dummy.txt was restored
         run: |
           set -e
-          ls -la ~/mnt/${{ github.repository }}
+          ls -la ~/storage-dir/${{ github.repository }}
           [[ "$(cat dummy.txt)" == "dummy" ]] || { echo "dummy.txt must be restored"; exit 1; }
       - name: Remove layer.txt file and dir/subdir hierarchy
         run: rm -rf dir
@@ -63,12 +63,12 @@ jobs:
         uses: ./
         with:
           action: load
-          storage-dir: ~/mnt
+          storage-dir: ~/storage-dir
           layer-name: my-layer
       - name: Check that dir/subdir/layer.txt was restored, and dummy.txt still exists
         run: |
           set -e
-          ls -la ~/mnt/${{ github.repository }}.my-layer
+          ls -la ~/storage-dir/${{ github.repository }}.my-layer
           [[ "$(cat dummy.txt)" == "dummy" ]] || { echo "dummy.txt must be kept"; exit 1; }
           [[ "$(cat dir/subdir/layer.txt)" == "layer" ]] || { echo "layer.txt must be restored"; exit 1; }
 

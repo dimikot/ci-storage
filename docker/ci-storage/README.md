@@ -11,8 +11,8 @@ infra. This server is needed for ci-storage tool to work.
    - `CI_STORAGE_PUBLIC_KEY` (optional): pass this secret or mount a file from
      host to `/run/secrets/CI_STORAGE_PUBLIC_KEY` to allow SSH access to this
      host from any ci-runner container which knows its private key
-4. Mount some persistent storage (e.g. a EBS volume) to `/mnt`, so it survives
-   the container restart.
+4. Optionally, mount some persistent volume to the storage directory, so it will
+   survive the container restart.
 
 Example for docker compose:
 
@@ -37,6 +37,12 @@ volumes:
 ```
 
 One ci-storage container may serve multiple GitHub repositories. Each of them
-will have own directory in /mnt (managed by ci-storage tool).
+will have its own sub-directory (managed by ci-storage tool).
+
+To enter the container, run e.g.:
+
+```
+docker compose exec ci-storage bash -l
+```
 
 See also https://github.com/dimikot/ci-storage

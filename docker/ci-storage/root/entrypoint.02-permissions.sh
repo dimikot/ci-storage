@@ -4,5 +4,5 @@
 #
 set -u -e
 
-chown guest:guest /mnt
-chmod 700 /mnt
+chown guest:guest "$STORAGE_DIR"
+chmod 700 "$STORAGE_DIR"
