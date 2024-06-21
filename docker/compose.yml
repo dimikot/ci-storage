@@ -59,6 +59,7 @@ services:
       - FORWARD_HOST
       - FORWARD_PORTS=10022/tcp 8125/udp
       - CI_STORAGE_HOST=127.0.0.1:10022
+      - BTIME
       - DEBUG_SHUTDOWN_DELAY_SEC=1
     secrets:
       - CI_STORAGE_PRIVATE_KEY

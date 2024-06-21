@@ -22,6 +22,9 @@ self-hosted runners as you want. An example scenario:
    - `CI_STORAGE_HOST` (optional): the host which the initial ci-storage run
      will pull the data from; often times it is set to "127.0.0.1:10022" where
      10022 is an example of SSH port forwarded via FORWARD_HOST/FORWARD_PORTS
+   - `BTIME` (optional): you may pass the result of `cat /proc/stat | grep btime
+     | awk '{print $2}'` here to let the container log uptime to AWS CloudWatch
+     (since the host boot timestamp in this variable)
    - `DEBUG_SHUTDOWN_DELAY_SEC` (optional): a debug feature to test, how much
      time does the orchestrator give the container to gracefully shutdown before
      killing the container
@@ -65,6 +68,7 @@ services:
       - FORWARD_PORTS=15432 18125/udp 10022
       # An address of ci-storage service to pull the slots from.
       - CI_STORAGE_HOST=127.0.0.1:10022
+      - BTIME
     volumes:
       # ~/.ssh/ci-storage must exist on the docker host to access ci-storage
       # remote container at $FORWARD_HOST

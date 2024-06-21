@@ -39,6 +39,11 @@ if [[ "${CI_STORAGE_HOST:=}" != "" && ! "$CI_STORAGE_HOST" =~ ^([-.[:alnum:]]+@)
   exit 1
 fi
 
+if [[ "${BTIME:=}" != "" && ! "$BTIME" =~ ^[0-9]+$ ]]; then
+  echo "If BTIME is passed, it must be a number (boot timestamp)."
+  exit 1
+fi
+
 if [[ "${DEBUG_SHUTDOWN_DELAY_SEC:=}" != "" && ! "$DEBUG_SHUTDOWN_DELAY_SEC" =~ ^[0-9]+$ ]]; then
   echo "If DEBUG_SHUTDOWN_DELAY_SEC is passed, it must be a number."
   exit 1

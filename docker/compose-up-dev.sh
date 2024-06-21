@@ -8,6 +8,7 @@ GH_REPOSITORY=$(gh repo view --json owner,name -q '.owner.login + "/" + .name') 
 GH_LABELS=ci-storage-dev \
 FORWARD_HOST=host.docker.internal \
 TZ=America/Los_Angeles \
+BTIME=$(date '+%s') \
 ASGS=$(gh repo view --json owner,name -q '.owner.login + "/" + .name'):ci-storage-dev:myasg \
 DOMAIN=${DOMAIN:-example.com} \
 docker compose up --pull=always --build "$@"
