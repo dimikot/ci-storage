@@ -57,7 +57,9 @@ def logged_result(
             doing_ellipsis = f"{doing}..." if doing else None
             success_msg = f"{doing_ellipsis} ok" if doing_ellipsis else None
             failure_msg = " ".join(s for s in (doing_ellipsis, failure) if s)
-            if exc_type and exc_value:
+            if isinstance(exc_value, KeyboardInterrupt):
+                return None
+            elif exc_type and exc_value:
                 log(
                     f"{failure_msg + ': ' if failure_msg else ''}{exc_type.__name__}: {exc_value}\n"
                     + "".join(traceback.format_tb(tb)),

@@ -22,7 +22,7 @@ set -u -e
 cd ~/actions-runner
 
 name_prefix="ci-storage"
-instance_id=$(aws_metadata_curl latest/meta-data/instance-id)
+instance_id=$(aws_instance_id)
 if [[ "$instance_id" != "" ]]; then
   hash="${instance_id##i-}"
   name="$name_prefix-$hash-$(date '+%m%d-%H%M')"
