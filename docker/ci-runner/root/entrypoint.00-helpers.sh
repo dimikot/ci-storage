@@ -89,9 +89,9 @@ aws_write_tag() {
     --tags "Key=$key,Value=$value"
 }
 
-# Prints the current date in the same format as the GitHub Actions runner does.
-nice_date() {
-  date +"%Y-%m-%d %H:%M:%S %Z"
+# Prints the current date and the message after it.
+say() {
+  echo "[$(date +"%Y-%m-%d %H:%M:%S %Z")] $*"
 }
 
 export -f aws_metadata_curl
@@ -100,6 +100,8 @@ export -f aws_instance_id
 export -f aws_cloudwatch_put_metric_data
 export -f aws_read_tag
 export -f aws_write_tag
-export -f nice_date
+export -f say
 
-nice_date
+exec 42>&1 > >(grep --line-buffered -v '^$' >&42) 2>&1
+echo "==================================="
+say "Starting."

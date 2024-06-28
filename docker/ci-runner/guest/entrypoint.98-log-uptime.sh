@@ -22,9 +22,9 @@ log_uptime_loop() {
       RunnerBootSec=$(awk '{print int($1)}' /proc/uptime)
       DockerBootSec=$(($(date '+%s') - BTIME - RunnerBootSec))
       suffix="$DockerBootSec+$RunnerBootSec sec"
-      message="$(nice_date): Appending boot latency ($suffix) suffix to the instance Name tag..."
+      message="Appending boot latency ($suffix) suffix to the instance Name tag..."
       if [[ "$instance_id" != "" ]]; then
-        echo "$message"
+        say "$message"
         # Only append boot latency if we actually booted or rebooted (i.e.
         # $btime injected from the outside has changed). Don't do it if the
         # container has just been restarted (i.e. if $btime didn't change).
@@ -37,14 +37,14 @@ log_uptime_loop() {
             aws_write_tag "$TAG_DOCKER_BOOT_SEC" "$DockerBootSec" || true
             aws_write_tag "$TAG_NAME" "$name ($suffix)" || true
           else
-            echo "It is the container who restarted, not the instance start/reboot, so skipping."
+            say "It is the container who restarted, not the instance start/reboot, so skipping."
             DockerBootSec=$(aws_read_tag "$TAG_DOCKER_BOOT_SEC" || true)
           fi
         else
-          echo -e "Could not read Name tag of instance \"$instance_id\".\n"
+          say "Could not read Name tag of instance \"$instance_id\"."
         fi
       else
-        echo "$message (AWS metadata service is not available, so skipping)"
+        say "$message (AWS metadata service is not available, so skipping)"
       fi
     fi
 
@@ -73,7 +73,7 @@ log_uptime_loop() {
       out+=("$metric=${!metric}")
     done
 
-    echo "$(nice_date): $GH_REPOSITORY: ${out[*]} ($suffix)"
+    say "$GH_REPOSITORY: ${out[*]} ($suffix)"
     i=$((i + 1))
     sleep 60
   done

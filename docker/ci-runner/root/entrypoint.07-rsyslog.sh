@@ -4,4 +4,5 @@
 #
 set -u -e
 
-systemctl start rsyslog || true
+say "Starting rsyslog..."
+systemctl start rsyslog &

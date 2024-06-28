@@ -53,7 +53,8 @@ RUN true \
       *) echo >&2 "unsupported architecture: $arch"; exit 1 ;; \
     esac \
     && runner_version=$(curl --silent "https://api.github.com/repos/actions/runner/releases/latest" | jq -r ".tag_name[1:]") \
-    && curl --no-progress-meter -L https://github.com/actions/runner/releases/download/v$runner_version/actions-runner-$arch-$runner_version.tar.gz | tar xz
+    && curl --no-progress-meter -L https://github.com/actions/runner/releases/download/v$runner_version/actions-runner-$arch-$runner_version.tar.gz | tar xz \
+    && date > .updated_at
 
 USER root
 RUN true \
@@ -69,7 +70,6 @@ RUN true \
 RUN echo "cd ~guest && gosu guest bash -l" > ~/.bash_profile
 
 ADD --chmod=755 https://raw.githubusercontent.com/dimikot/ci-storage/main/ci-storage /usr/bin/ci-storage
-ADD --chmod=755 https://raw.githubusercontent.com/dimikot/signal-fanout/main/signal-fanout /usr/bin/signal-fanout
 ADD --chmod=755 https://raw.githubusercontent.com/dimikot/run-in-separate-pgrp/main/run-in-separate-pgrp /usr/bin/run-in-separate-pgrp
 
 COPY --chmod=755 --chown=root:root root/entrypoint*.sh /root

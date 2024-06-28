@@ -7,11 +7,14 @@ set -u -e
 # Storage directory where ci-storage tool saves the data.
 export STORAGE_DIR="/mnt"
 
-# Prints the current date in the same format as the GitHub Actions runner does.
-nice_date() {
-  date +"%Y-%m-%d %H:%M:%S %Z"
+# Prints the current date and the message after it.
+say() {
+  echo "[$(date +"%Y-%m-%d %H:%M:%S %Z")] $*"
 }
 
-export -f nice_date
+export -f say
 
-nice_date
+exec 42>&1 > >(grep --line-buffered -v '^$' >&42) 2>&1
+echo "==================================="
+say "Starting."
+

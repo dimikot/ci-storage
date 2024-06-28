@@ -15,18 +15,18 @@ instance_interruption_loop() {
 
   res=$(aws_metadata_curl latest/meta-data/spot/instance-action --head)
   if [[ "$res" == "" ]]; then
-    echo "AWS metadata service is not available, skipping interruption checks."
+    say "AWS metadata service is not available, skipping interruption checks."
     return
   fi
 
-  echo "Checking for instance interruption in background every few seconds."
+  say "Checking for instance interruption in background every few seconds."
   while :; do
     response_http_200=$(
       aws_metadata_curl latest/meta-data/spot/instance-action --head \
       | head -1 | grep 200 || true
     )
     if [[ "$response_http_200" != "" ]]; then
-      echo "$(nice_date): Instance interruption detected, sending SIGINT to PID $pid."
+      say "Instance interruption detected, sending SIGINT to PID $pid."
       kill -SIGINT "$pid"
       return
     else

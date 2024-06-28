@@ -24,7 +24,7 @@ if [[ "$FORWARD_HOST" != "" && "$FORWARD_PORTS" != "" ]]; then
     fi
   done
 
-  echo "Forwarding ports:"
+  say "Forwarding ports:"
 
   # For TCP, we use fast haproxy.
   if [[ ${#tcp_lines[@]} != 0 ]]; then
@@ -43,7 +43,7 @@ if [[ "$FORWARD_HOST" != "" && "$FORWARD_PORTS" != "" ]]; then
       printf '%s\n' "${tcp_lines[@]}"
     ) > $config.new
     mv -f $config.new $config
-    echo "haproxy:"
+    echo "haproxy tcp:"
     sed -e "1,/^$section/d" -e "s/^/  /" $config
   fi
 
@@ -51,17 +51,19 @@ if [[ "$FORWARD_HOST" != "" && "$FORWARD_PORTS" != "" ]]; then
   if [[ ${#udp_lines[@]} != 0 ]]; then
     config=/etc/rinetd.conf
     printf '%s\n' "${udp_lines[@]}" > $config
-    echo "rinetd:"
+    echo "rinetd udp:"
     sed -e "s/^/  /" $config
   fi
 
-  echo
+  if [[ ${#udp_lines[@]} != 0 ]]; then
+    say "Starting rinetd..."
+    systemctl start rinetd &
+  fi
 
   if [[ ${#tcp_lines[@]} != 0 ]]; then
-    /etc/init.d/haproxy start || true
-    echo
-  fi
-  if [[ ${#udp_lines[@]} != 0 ]]; then
-    systemctl start rinetd || true
+    # We must wait for it (not run it in background), otherwise "ci-storage
+    # load" step will likely fail.
+    say "Starting haproxy..."
+    /etc/init.d/haproxy start
   fi
 fi

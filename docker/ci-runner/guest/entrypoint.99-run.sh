@@ -6,4 +6,5 @@
 #
 set -u -e
 
+say "Starting the self-hosted runner..."
 cd ~/actions-runner && ./run.sh & wait $!

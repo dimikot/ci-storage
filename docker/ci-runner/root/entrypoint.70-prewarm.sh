@@ -19,7 +19,7 @@ prewarm_loop() {
       info=$({ time du -sh "$dir" | sed -E 's/\s+/ /g'; } 2>$time_took)
     fi
     uptime=$(uptime | sed -E -e 's/^\s*[0-9:]+\s+//' -e 's/\s+/ /g')
-    echo "$(nice_date): Prewarm (took $(cat $time_took)): $info: $uptime"
+    say "Prewarm (took $(cat $time_took)): $info: $uptime"
     sleep 60
   done
 }
