@@ -29,9 +29,4 @@ class Test(TestCase):
         )
 
     def test_aws_autoscaling_terminate_instance(self):
-        self.assertIsNone(
-            aws_autoscaling_terminate_instance(
-                instance_id="test",
-                should_decrement_desired_capacity=True,
-            )
-        )
+        self.assertIsNone(aws_autoscaling_terminate_instance(instance_id="test"))

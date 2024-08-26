@@ -60,8 +60,5 @@ class HandlerIdleRunners(AsgHandler):
                 doing=f"terminating old idle instance {runner.name} in {self.asg_spec}"
                 + (f" {DRY_RUN_MSG}" if not aws_region() else ""),
             ):
-                aws_autoscaling_terminate_instance(
-                    instance_id=runner.instance_id(),
-                    should_decrement_desired_capacity=True,
-                )
+                aws_autoscaling_terminate_instance(instance_id=runner.instance_id())
                 self.terminated_instance_ids[runner.id] = True

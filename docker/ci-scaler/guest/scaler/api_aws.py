@@ -156,32 +156,27 @@ def aws_autoscaling_increment_desired_capacity(
 def aws_autoscaling_terminate_instance(
     *,
     instance_id: str,
-    should_decrement_desired_capacity: bool,
 ) -> Literal[True] | None:
     try:
         res = aws(
             "autoscaling",
             "terminate-instance-in-auto-scaling-group",
             f"--instance-id={instance_id}",
-            (
-                "--should-decrement-desired-capacity"
-                if should_decrement_desired_capacity
-                else ""
-            ),
+            "--should-decrement-desired-capacity",
         )
         return None if res is None else True
     except subprocess.CalledProcessError as e:
-        if (
-            should_decrement_desired_capacity
-            and "shouldDecrementDesiredCapacity" in e.stderr
-        ):
-            # "Currently, desiredSize equals minSize (N). Terminating instance
-            # without replacement will violate group's min size constraint" - do
-            # a retry without decrementing desired capacity.
+        if "shouldDecrementDesiredCapacity" in e.stderr:
+            # E.g. this error message: "Currently, desiredSize equals minSize
+            # (3). Terminating instance without replacement will violate group's
+            # min size constraint. Either set shouldDecrementDesiredCapacity
+            # flag to false or lower group's min size." - do a retry without
+            # decrementing desired capacity.
             res = aws(
                 "autoscaling",
                 "terminate-instance-in-auto-scaling-group",
                 f"--instance-id={instance_id}",
+                "--no-should-decrement-desired-capacity",
             )
             return None if res is None else True
         elif "not found" in e.stderr:
