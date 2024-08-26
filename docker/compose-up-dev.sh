@@ -3,6 +3,7 @@ set -e
 
 echo "Building & booting containters on the local laptop for debugging purposes..."
 
+# This is for debugging/illustration purposes only.
 btime=1719410000
 if [[ "$OSTYPE" == darwin* ]]; then
   btime=$(sysctl -n kern.boottime | awk '{print $4}' | tr -d ',')
