@@ -112,16 +112,24 @@ def main():
 
     def poll_thread():
         while True:
-            runners: dict[str, list[Runner]] = {}
+            runners_by_repository: dict[str, list[Runner]] = {}
             for repository in set(asg_spec.repository for asg_spec in asg_specs):
-                runners[repository] = gh_fetch_runners(repository=repository)
+                with logged_result(
+                    swallow=True,
+                    failure=f"Error fetching runners (will retry in {poll_interval_sec} sec)",
+                ):
+                    runners_by_repository[repository] = gh_fetch_runners(
+                        repository=repository
+                    )
             for asg_spec in asg_specs:
+                if asg_spec.repository not in runners_by_repository:
+                    continue
                 for handler in handlers_asg.get(asg_spec, []):
                     with logged_result(swallow=True, failure=f"Error in {handler}"):
                         handler.handle(
                             [
                                 runner
-                                for runner in runners[asg_spec.repository]
+                                for runner in runners_by_repository[asg_spec.repository]
                                 if asg_spec.label in runner.labels
                             ]
                         )

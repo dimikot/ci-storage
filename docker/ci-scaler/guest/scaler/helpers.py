@@ -61,7 +61,8 @@ def logged_result(
                 return None
             elif exc_type and exc_value:
                 log(
-                    f"{failure_msg + ': ' if failure_msg else ''}{exc_type.__name__}: {exc_value}\n"
+                    f"{failure_msg + ': ' if failure_msg else ''}{exc_type.__name__}: {exc_value}".rstrip()
+                    + "\n"
                     + "".join(traceback.format_tb(tb)),
                     error=True,
                 )

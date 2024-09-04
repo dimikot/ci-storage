@@ -168,7 +168,7 @@ class HandlerWebhooks:
             if action != "requested" and action != "in_progress":
                 return handler.send_json(
                     202,
-                    message="ignoring action which is not requested/in_progress",
+                    message='ignoring action != ["requested", "in_progress"]',
                 )
 
             event_key = (int(event_payload["id"]), int(event_payload["run_attempt"]))
