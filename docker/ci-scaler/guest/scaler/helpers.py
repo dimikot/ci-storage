@@ -17,6 +17,7 @@ from typing import Any, Callable, Generic, Iterable, Literal, TypeVar
 
 C_RED = "\033[1;31m"
 C_GRAY = "\033[1;30m"
+C_END = "\033[0m"
 
 
 #
@@ -25,7 +26,7 @@ C_GRAY = "\033[1;30m"
 def log(msg: str, *, error: bool = False):
     date = time.strftime("%d/%b/%Y %H:%M:%S") + " " + ("E" if error else "I")
     prefix = (C_RED if error else C_GRAY) + f"[{date}] "
-    suffix = "\033[0m"
+    suffix = C_END
     print(
         "\n".join([f"{prefix}{s}{suffix}" for s in msg.splitlines()]).rstrip(),
         file=sys.stderr,
@@ -61,7 +62,8 @@ def logged_result(
                 return None
             elif exc_type and exc_value:
                 log(
-                    f"{failure_msg + ': ' if failure_msg else ''}{exc_type.__name__}: {exc_value}\n"
+                    f"{failure_msg + ': ' if failure_msg else ''}{exc_type.__name__}: {exc_value}".rstrip()
+                    + "\n"
                     + "".join(traceback.format_tb(tb)),
                     error=True,
                 )

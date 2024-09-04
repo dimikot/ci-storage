@@ -132,10 +132,10 @@ class HandlerWebhooks:
             )
 
         if "hook" in data:
-            return handler.send_json(202, message='ignoring service "hook" event')
+            return handler.send_json(202, message='ignoring "hook" service event')
 
         if not repository:
-            return handler.send_json(202, message="ignoring event with not repository")
+            return handler.send_json(202, message="ignoring event with no repository")
 
         if handler.client_address[0] == "127.0.0.1" and not event_payload:
             match = re.match(
@@ -168,7 +168,7 @@ class HandlerWebhooks:
             if action != "requested" and action != "in_progress":
                 return handler.send_json(
                     202,
-                    message="ignoring action which is not requested/in_progress",
+                    message='ignoring action != ["requested", "in_progress"]',
                 )
 
             event_key = (int(event_payload["id"]), int(event_payload["run_attempt"]))
