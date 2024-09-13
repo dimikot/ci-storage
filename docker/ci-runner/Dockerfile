@@ -20,7 +20,7 @@ RUN true \
     && apt-get install -y --no-install-recommends \
       openssh-client \
       build-essential haproxy rinetd \
-      awscli jq gh rsync python3 python3-yaml rsyslog systemctl tzdata gosu less mc git curl wget pv psmisc unzip vim nano telnet net-tools apt-transport-https ca-certificates locales gnupg lsb-release
+      awscli jq gh rsync python3 python3-yaml rsyslog systemctl tzdata gosu less mc git curl wget pv psmisc unzip zstd file vim nano telnet net-tools apt-transport-https ca-certificates locales gnupg lsb-release
 
 # Install & patch Docker-in-Docker service. Requires sysbox installed on the host. See also:
 # https://forums.docker.com/t/etc-init-d-docker-62-ulimit-error-setting-limit-invalid-argument-problem/139424
