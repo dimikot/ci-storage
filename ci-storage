@@ -492,11 +492,15 @@ def cmd_to_debug_str(
     cmd: list[str],
 ) -> str:
     inv = dict((v, k) for k, v in SCRIPTS.items())
-    return shlex.join(
-        [
-            f"<{inv[arg]}>" if arg in inv else arg.rstrip().replace("\n", "\\n")
-            for arg in cmd
-        ]
+    return re.sub(
+        r" '(--[^=]+=)",
+        r" \1'",
+        shlex.join(
+            [
+                f"<{inv[arg]}>" if arg in inv else arg.rstrip().replace("\n", "\\n")
+                for arg in cmd
+            ]
+        ),
     )
 
 
@@ -583,6 +587,7 @@ def build_rsync_args(
             else []
         ),
         *(["--prune-empty-dirs"] if layer and action == "store" else []),
+        *(["--rsync-path=rsync --fake-super"] if os.geteuid() == 0 else []),
     ]
 
 
