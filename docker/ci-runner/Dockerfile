@@ -42,10 +42,7 @@ RUN true \
 USER guest
 RUN true \
     && mkdir ~guest/.cache && chmod 700 ~guest/.cache \
-    && mkdir ~guest/.ssh && chmod 700 ~guest/.ssh \
-    && mkdir ~guest/actions-runner \
-    && chown -R guest:guest ~guest \
-    && cd ~guest/actions-runner \
+    && mkdir ~guest/actions-runner && cd ~guest/actions-runner \
     && arch=$(dpkg --print-architecture) \
     && case "$arch" in \
       x86_64|amd64) arch=linux-x64 ;; \

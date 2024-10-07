@@ -45,6 +45,7 @@ runs:
         date
 
         default_run_hash="${{ github.run_id }}"
+        whoami=$(whoami)
 
         action="${{ inputs.action }}"
         storage_host="${{ inputs.storage-host || '' }}"
@@ -61,6 +62,10 @@ runs:
           storage_host=$(cat ~/ci-storage-host)
         fi
 
+        if [[ "$storage_host" != "" && "$storage_host" != *@* ]]; then
+          storage_host="$whoami@$storage_host"
+        fi
+
         if [[ "$slot_id" == "" ]]; then
           slot_id="$default_run_hash"
         elif [[ "$slot_id" == "*" && "$action" == "load" ]]; then
@@ -68,14 +73,7 @@ runs:
           slot_id="$default_run_hash $slot_id"
         fi
 
-        if [[ "$local_dir" == "/" ]]; then
-          echo "You cannot use / as local-dir."
-          exit 1
-        elif [[ "$local_dir" == "." ]]; then
-          storage_dir="$storage_dir/_"
-        else
-          storage_dir="$storage_dir/$(echo "$local_dir" | tr / _)"
-        fi
+        storage_dir="$storage_dir/$(realpath "$local_dir" | tr / _)"
 
         if [[ "$layer_name" != "" ]]; then
           layer_include=${layer_include:-"*"}
@@ -99,7 +97,7 @@ runs:
           "$action"
         )
 
-        if [[ -d "$local_dir" && "$(stat -c '%U' "$local_dir")" != "$(whoami)" ]]; then
+        if [[ -d "$local_dir" && "$(stat -c '%U' "$local_dir")" != "$whoami" ]]; then
           sudo /usr/bin/ci-storage "${args[@]}"
         else
           "${{ github.action_path }}/ci-storage" "${args[@]}"
