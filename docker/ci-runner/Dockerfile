@@ -19,7 +19,7 @@ RUN true \
     && apt-get update -y \
     && apt-get install -y --no-install-recommends \
       openssh-client \
-      build-essential haproxy rinetd \
+      build-essential haproxy rinetd sudo \
       awscli jq gh rsync python3 python3-yaml rsyslog systemctl tzdata gosu less mc git curl wget pv psmisc unzip zstd file vim nano telnet net-tools apt-transport-https ca-certificates locales gnupg lsb-release
 
 # Install & patch Docker-in-Docker service. Requires sysbox installed on the host. See also:
@@ -56,6 +56,7 @@ RUN true \
     && curl --no-progress-meter -L https://github.com/actions/runner/releases/download/v$runner_version/actions-runner-$arch-$runner_version.tar.gz | tar xz \
     && date > .updated_at
 
+# Install OS dependencies needed by the action runner.
 USER root
 RUN true \
     && ~guest/actions-runner/bin/installdependencies.sh \

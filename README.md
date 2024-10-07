@@ -53,41 +53,48 @@ ones, so rsync can run efficiently.
     # Default: the content of ~/ci-storage-host file.
     storage-host: ''
 
-    # Storage directory on the storage host.
-    # Default: /mnt/{owner}/{repo}.
+    # Storage directory on the remote host. Notice that, when building the final
+    # directory on the storage host, owner and repo are always appended, so the
+    # path will be {storage-dir}/{owner}/{repo}/{slug(local-dir)} or
+    # {storage-dir}/{owner}/{repo}/{slug(local-dir)}.{layer-name}.
+    # Default: /mnt
     storage-dir: ''
 
     # Remove slots created earlier than this many seconds ago.
-    # Default: 14400 (4 hours)
+    # Default: 14400 (4 hours).
     storage-max-age-sec: ''
 
     # Id of the slot to store to or load from; use "*" to load a smart-random
     # slot (e.g. most recent or best in terms of layer compatibility) and skip
     # if it does not exist.
-    # Default: $GITHUB_RUN_ID
+    # Default: $GITHUB_RUN_ID (which is friendly to "Re-run failed jobs").
     slot-id: ''
 
-    # Local directory path to store from or load to.
-    # Default: "." (the current work directory)
+    # Local directory path to store from or load to. The value namespaces the
+    # data stored, so different local-dir values correspond to different
+    # storages. If the owner of the directory is different from the current
+    # user, then ci-storage tool is run with sudo, and the binary is used not
+    # from the action directory, but from /usr/bin/ci-storage.
+    # Default: "." (current work directory).
     local-dir: ''
 
     # Newline separated exclude pattern(s) for rsync.
-    # Default: empty
+    # Default: empty.
     exclude: ''
 
     # If set, the final directory on the storage host will be
-    # {storage-dir}/{owner}/{repo}.{layer-name}, plus deletion will be turned
-    # off on load.
-    # Default: empty
+    # {storage-dir}/{owner}/{repo}/{slug(local-dir)}.{layer-name},
+    # plus deletion will be turned off on load.
+    # Default: empty.
     layer-name: ''
 
     # Newline-separated include pattern(s) for rsync. If set, only the files
     # matching the patterns will be transferred. Implies setting layer-name.
-    # Default: empty
+    # Default: empty.
     layer-include: ''
 
     # If set, prints the list of transferred files.
-    # Default: false
+    # Default: false.
     verbose: ''
 ```
 <!-- end usage -->
