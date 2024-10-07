@@ -27,12 +27,17 @@ jobs:
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@v4
-      - name: Create dummy file
+      - name: Disable default ci-storage remote host (store locally)
+        run: |
+          echo -n "" > ~/ci-storage-host
+      - name: Create dummy files
         run: |
           echo "dummy" > dummy.txt
           mkdir -p dir/subdir
           echo "layer" > dir/subdir/layer.txt
-          echo -n "" > ~/ci-storage-host
+          mkdir -p /tmp/dir
+          echo "local-dir" > /tmp/dir/local-dir.txt
+
       - name: Test store
         uses: ./
         with:
@@ -45,7 +50,14 @@ jobs:
           storage-dir: ~/storage-dir
           layer-name: my-layer
           layer-include: layer.txt
-      - name: Remove dummy file
+      - name: Test store (custom local-dir)
+        uses: ./
+        with:
+          action: store
+          storage-dir: ~/storage-dir
+          local-dir: /tmp/dir
+
+      - name: Remove dummy.txt
         run: rm dummy.txt
       - name: Test load
         uses: ./
@@ -55,9 +67,10 @@ jobs:
       - name: Check that dummy.txt was restored
         run: |
           set -e
-          ls -la ~/storage-dir/${{ github.repository }}
+          ls -la ~/storage-dir/${{ github.repository }}/_
           [[ "$(cat dummy.txt)" == "dummy" ]] || { echo "dummy.txt must be restored"; exit 1; }
-      - name: Remove layer.txt file and dir/subdir hierarchy
+
+      - name: Remove dir/subdir/layer.txt
         run: rm -rf dir
       - name: Test load (layer)
         uses: ./
@@ -68,9 +81,23 @@ jobs:
       - name: Check that dir/subdir/layer.txt was restored, and dummy.txt still exists
         run: |
           set -e
-          ls -la ~/storage-dir/${{ github.repository }}.my-layer
+          ls -la ~/storage-dir/${{ github.repository }}/_.my-layer
           [[ "$(cat dummy.txt)" == "dummy" ]] || { echo "dummy.txt must be kept"; exit 1; }
           [[ "$(cat dir/subdir/layer.txt)" == "layer" ]] || { echo "layer.txt must be restored"; exit 1; }
+
+      - name: Remove /tmp/dir/local-dir.txt
+        run: rm -rf /tmp/dir/*
+      - name: Test load (custom local-dir)
+        uses: ./
+        with:
+          action: load
+          storage-dir: ~/storage-dir
+          local-dir: /tmp/dir
+      - name: Check that /tmp/dir/local-dir.txt was restored
+        run: |
+          set -e
+          ls -la ~/storage-dir/${{ github.repository }}/_tmp_dir
+          [[ "$(cat /tmp/dir/local-dir.txt)" == "local-dir" ]] || { echo "/tmp/dir/local-dir.txt must be restored"; exit 1; }
 
   # Tests ci-scaler logic.
   ci-scaler-test:

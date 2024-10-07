@@ -18,7 +18,7 @@ if [[ "$CI_STORAGE_HOST" != "" && -f ~/.ssh/id_rsa ]]; then
   say "Running the initial \"ci-storage load\" for $local_dir..."
   ci-storage load \
     --storage-host="$CI_STORAGE_HOST" \
-    --storage-dir="$WORK_DIR/$GH_REPOSITORY" \
+    --storage-dir="$WORK_DIR/$GH_REPOSITORY/_" \
     --slot-id="*" \
     --local-dir="$local_dir" \
     & export CI_STORAGE_PID=$!
