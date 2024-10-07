@@ -31,6 +31,9 @@ inputs:
   layer-include:
     description: "Newline-separated include pattern(s) for rsync. If set, only the files matching the patterns will be transferred. Implies setting layer-name. Default: empty."
     required: false
+  sudo:
+    description: "If set, uses /usr/bin/ci-storage path and runs it with sudo. Useful for storing/loading privileged directories like Docker volumes. Default: false."
+    required: false
   verbose:
     description: "If set, prints the list of transferred files. Default: false."
     required: false
@@ -56,6 +59,7 @@ runs:
         exclude="${{ inputs.exclude || '' }}"
         layer_name="${{ inputs.layer-name || '' }}"
         layer_include="${{ inputs.layer-include || '' }}"
+        sudo="${{ inputs.sudo || '' }}"
         verbose="${{ inputs.verbose && '--verbose' || '' }}"
 
         if [[ "$storage_host" == "" ]]; then
@@ -73,7 +77,7 @@ runs:
           slot_id="$default_run_hash $slot_id"
         fi
 
-        storage_dir="$storage_dir/$(realpath "$local_dir" | tr / _)"
+        storage_dir="$storage_dir/$(realpath -m "$local_dir" | tr / _)"
 
         if [[ "$layer_name" != "" ]]; then
           layer_include=${layer_include:-"*"}
@@ -97,7 +101,7 @@ runs:
           "$action"
         )
 
-        if [[ -d "$local_dir" && "$(stat -c '%U' "$local_dir")" != "$whoami" ]]; then
+        if [[ "$sudo" == yes || "$sudo" == true || "$sudo" == on || "$sudo" == 1 ]]; then
           sudo /usr/bin/ci-storage "${args[@]}"
         else
           "${{ github.action_path }}/ci-storage" "${args[@]}"

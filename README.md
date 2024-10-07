@@ -93,6 +93,11 @@ ones, so rsync can run efficiently.
     # Default: empty.
     layer-include: ''
 
+    # If set, uses /usr/bin/ci-storage path and runs it with sudo. Useful for
+    # storing/loading privileged directories like Docker volumes.
+    # Default: false.
+    sudo: ''
+
     # If set, prints the list of transferred files.
     # Default: false.
     verbose: ''

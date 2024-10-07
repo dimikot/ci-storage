@@ -43,6 +43,7 @@ jobs:
         with:
           action: store
           storage-dir: ~/storage-dir
+          sudo: false
       - name: Test store (layer)
         uses: ./
         with:
