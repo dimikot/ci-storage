@@ -434,10 +434,10 @@ def check_output(
     host, port = parse_host_port(host)
     if host:
         ssh_prefix = [*build_ssh_cmd(port=port), host]
-        print(f"$ {cmd_to_debug_str([*ssh_prefix, *cmd])}")
+        print(cmd_to_debug_prompt([*ssh_prefix, *cmd]))
         cmd = [*ssh_prefix, shlex.join(cmd)]
     else:
-        print(f"$ {cmd_to_debug_str(cmd)}")
+        print(cmd_to_debug_prompt(cmd))
     res = subprocess.run(
         cmd,
         text=True,
@@ -459,7 +459,7 @@ def check_call(
     cmd: list[str],
     print_elapsed: bool = False,
 ) -> None:
-    print(f"$ {cmd_to_debug_str(cmd)}")
+    print(cmd_to_debug_prompt(cmd))
     start_time = time.time()
     with subprocess.Popen(
         cmd,
@@ -486,13 +486,15 @@ def check_call(
 
 
 #
-# Converts a command to a debug string.
+# Converts a command to a debug string like:
+# - "$ some command"
+# - "% some command" (when the tool is run as root)
 #
-def cmd_to_debug_str(
+def cmd_to_debug_prompt(
     cmd: list[str],
 ) -> str:
     inv = dict((v, k) for k, v in SCRIPTS.items())
-    return re.sub(
+    str = re.sub(
         r" '(--[^=]+=)",
         r" \1'",
         shlex.join(
@@ -502,6 +504,8 @@ def cmd_to_debug_str(
             ]
         ),
     )
+    prompt = "%" if os.geteuid() == 0 else "$"
+    return f"{prompt} {str}"
 
 
 #
