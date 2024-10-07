@@ -67,7 +67,7 @@ jobs:
       - name: Check that dummy.txt was restored
         run: |
           set -e
-          ls -la ~/storage-dir/${{ github.repository }}/_
+          ls -la ~/storage-dir/${{ github.repository }}/*
           [[ "$(cat dummy.txt)" == "dummy" ]] || { echo "dummy.txt must be restored"; exit 1; }
 
       - name: Remove dir/subdir/layer.txt
@@ -81,7 +81,7 @@ jobs:
       - name: Check that dir/subdir/layer.txt was restored, and dummy.txt still exists
         run: |
           set -e
-          ls -la ~/storage-dir/${{ github.repository }}/_.my-layer
+          ls -la ~/storage-dir/${{ github.repository }}/*
           [[ "$(cat dummy.txt)" == "dummy" ]] || { echo "dummy.txt must be kept"; exit 1; }
           [[ "$(cat dir/subdir/layer.txt)" == "layer" ]] || { echo "layer.txt must be restored"; exit 1; }
 
@@ -96,7 +96,7 @@ jobs:
       - name: Check that /tmp/dir/local-dir.txt was restored
         run: |
           set -e
-          ls -la ~/storage-dir/${{ github.repository }}/_tmp_dir
+          ls -la ~/storage-dir/${{ github.repository }}/*
           [[ "$(cat /tmp/dir/local-dir.txt)" == "local-dir" ]] || { echo "/tmp/dir/local-dir.txt must be restored"; exit 1; }
 
   # Tests ci-scaler logic.
