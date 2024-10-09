@@ -98,6 +98,10 @@ ones, so rsync can run efficiently.
     # Default: false.
     sudo: ''
 
+    # If set, runs the specified bash command before storing/loading.
+    # Default: empty.
+    run-before: ''
+
     # If set, prints the list of transferred files.
     # Default: false.
     verbose: ''

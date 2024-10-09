@@ -34,6 +34,9 @@ inputs:
   sudo:
     description: "If set, uses /usr/bin/ci-storage path and runs it with sudo. Useful for storing/loading privileged directories like Docker volumes. Default: false."
     required: false
+  run-before:
+    description: "If set, runs the specified bash command before storing/loading. Default: empty."
+    required: false
   verbose:
     description: "If set, prints the list of transferred files. Default: false."
     required: false
@@ -43,7 +46,7 @@ runs:
     - name: Run ci-storage ${{ inputs.action }}
       shell: bash
       run: |
-        exec 2>&1; set -e -o xtrace
+        exec 2>&1; set -ex
         pwd
         date
 
@@ -60,6 +63,7 @@ runs:
         layer_name="${{ inputs.layer-name || '' }}"
         layer_include="${{ inputs.layer-include || '' }}"
         sudo="${{ inputs.sudo || '' }}"
+        run_before="${{ inputs.run-before || '' }}"
         verbose="${{ inputs.verbose && '--verbose' || '' }}"
 
         if [[ "$storage_host" == "" ]]; then
@@ -100,6 +104,10 @@ runs:
           $verbose
           "$action"
         )
+
+        if [[ "$run_before" != "" ]]; then
+          bash -c "$run_before"
+        fi
 
         if [[ "$sudo" == yes || "$sudo" == true || "$sudo" == on || "$sudo" == 1 ]]; then
           sudo /usr/bin/ci-storage "${args[@]}"
