@@ -22,6 +22,5 @@ if [[ "$CI_STORAGE_HOST" != "" && -f ~/.ssh/id_rsa ]]; then
     --storage-host="$CI_STORAGE_HOST" \
     --storage-dir="$WORK_DIR/$GH_REPOSITORY/$(realpath "$local_dir" | tr / _)" \
     --slot-id="*" \
-    --local-dir="$local_dir" \
-    & export CI_STORAGE_PID=$!
+    --local-dir="$local_dir" &
 fi

@@ -6,10 +6,14 @@
 #
 set -u -e
 
-if [[ "${CI_STORAGE_PID:=}" != "" ]]; then
-  say "Waiting for the initial \"ci-storage load\" to finish (pid=$CI_STORAGE_PID)..."
-  wait "$CI_STORAGE_PID"
-fi
+while :; do
+  say 'Waiting for the initial "ci-storage load" to finish...'
+  pgrep -xa ci-storage || break
+  for _i in {1..6}; do
+    sleep 0.5
+    pgrep -xa ci-storage >/dev/null || break
+  done
+done
 
 say "Starting the self-hosted runner..."
 cd ~/actions-runner && ./run.sh & wait $!
