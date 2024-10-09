@@ -32,4 +32,4 @@ ci-storage() {
   ../ci-storage --local-dir="$LOCAL_DIR" --storage-dir="$STORAGE_DIR" "$@" &>$OUT
 }
 
-set -o xtrace
+set -x
