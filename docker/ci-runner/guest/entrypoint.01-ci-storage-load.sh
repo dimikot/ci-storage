@@ -17,7 +17,7 @@ cd "$local_dir" 2>/dev/null || true
 EOT
 
 if [[ "$CI_STORAGE_HOST" != "" && -f ~/.ssh/id_rsa ]]; then
-  say "Running the initial \"ci-storage load\" for $local_dir..."
+  say "Running the initial \"ci-storage load\" for $local_dir in background..."
   ci-storage load \
     --storage-host="$CI_STORAGE_HOST" \
     --storage-dir="$WORK_DIR/$GH_REPOSITORY/$(realpath "$local_dir" | tr / _)" \
