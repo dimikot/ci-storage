@@ -93,6 +93,10 @@ runs:
           exit 1
         fi
 
+        if [[ "$run_before" != "" ]]; then
+          bash -c "$run_before"
+        fi
+
         args=(
           --storage-host="$storage_host"
           --storage-dir="$storage_dir"
@@ -104,11 +108,6 @@ runs:
           $verbose
           "$action"
         )
-
-        if [[ "$run_before" != "" ]]; then
-          bash -c "$run_before"
-        fi
-
         if [[ "$sudo" == yes || "$sudo" == true || "$sudo" == on || "$sudo" == 1 ]]; then
           sudo /usr/bin/ci-storage "${args[@]}"
         else
