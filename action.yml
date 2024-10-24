@@ -46,9 +46,7 @@ runs:
     - name: Run ci-storage ${{ inputs.action }}
       shell: bash
       run: |
-        exec 2>&1; set -ex
-        pwd
-        date
+        exec 2>&1; set -ex; pwd; date
 
         default_run_hash="${{ github.run_id }}"
         whoami=$(whoami)

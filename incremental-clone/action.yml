@@ -1,0 +1,38 @@
+name: Incremental Clone
+description: "Speeds up checking out GITHUB_REF if recently cloned files are already in the work directory."
+branding:
+  icon: arrow-down
+  color: blue
+runs:
+  using: composite
+  steps:
+    - name: Git-Pull from the PR branch and remove all excess files
+      shell: bash
+      run: |
+        exec 2>&1; set -ex; pwd; date
+
+        if [[ ! -d .git ]]; then
+          git clone "https://github.com/$GITHUB_REPOSITORY.git" .
+        fi
+
+        # Speed up further rsync.
+        git config gc.auto 0
+
+        git fetch origin "+$GITHUB_REF"
+
+        # We don't use "git reset --hard" since it overwrites ALL files in the
+        # working directory, even unchanged, and thus, sets their mtimes to the
+        # current timestamp, which causes rsync to stop using hard-link
+        # dedupping. A work-around (simulation of git-reset and git-clean) is an
+        # ephemeral stashing: git-stash + git-stash-drop + git-checkout.
+        if [[ $(git status --porcelain | wc -l) -ne 0 ]]; then
+          git status
+          git stash --include-untracked
+          git stash drop || true
+        fi
+
+        git status
+        git log -10 --oneline
+        git checkout FETCH_HEAD
+        git status
+        git log -10 --oneline
