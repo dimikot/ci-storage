@@ -13,7 +13,7 @@ import textwrap
 import time
 import typing
 
-STORAGE_MAX_AGE_SEC_DEFAULT = 3600 * 4
+STORAGE_MAX_AGE_SEC_DEFAULT = 3600
 STORAGE_MAX_AGE_SEC_BAK = 60
 STORAGE_DIR_DEFAULT = "~/ci-storage"
 META_FILE = ".ci-storage.meta"
