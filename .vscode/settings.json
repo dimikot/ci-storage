@@ -2,10 +2,13 @@
   "cSpell.words": [
     "asgs",
     "BTIME",
+    "dedup",
     "dedupping",
     "digestmod",
     "elif",
+    "hardlink",
     "mtimes",
+    "myslot",
     "tmpfs"
   ]
 }
