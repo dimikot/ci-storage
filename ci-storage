@@ -147,6 +147,7 @@ def main():
         action_store(
             storage_host=storage_host,
             storage_dir=storage_dir,
+            storage_max_age_sec=storage_max_age_sec,
             slot_id=slot_ids[0],
             local_dir=local_dir,
             exclude=exclude,
@@ -156,7 +157,7 @@ def main():
         action_maintenance(
             storage_host=storage_host,
             storage_dir=storage_dir,
-            max_age_sec=storage_max_age_sec,
+            storage_max_age_sec=storage_max_age_sec,
         )
     if action == "load":
         if not slot_ids:
@@ -286,6 +287,7 @@ def action_store(
     *,
     storage_host: str | None,
     storage_dir: str,
+    storage_max_age_sec: int,
     slot_id: str,
     local_dir: str,
     exclude: list[str],
@@ -297,16 +299,27 @@ def action_store(
         raise UserException(f'slot_id="{slot_id}" is not allowed for "store" action')
 
     meta = None
+    slot_id_we_used_to_load_from = None
     if not layer:
         meta = SlotMeta.read_from(local_dir=local_dir)
-        meta.full_snapshot_history.insert(0, slot_id)
+        if meta and meta.full_snapshot_history:
+            slot_id_we_used_to_load_from = meta.full_snapshot_history[0]
 
     slot_infos = list_slots(
         storage_host=storage_host,
         storage_dir=storage_dir,
     )
 
-    slot_recent = list(slot_infos.values())[0] if slot_infos else None
+    slot_recent = None
+    if (
+        slot_id_we_used_to_load_from in slot_infos
+        and slot_infos[slot_id_we_used_to_load_from].age_sec
+        < storage_max_age_sec - STORAGE_MAX_AGE_SEC_BAK
+    ):
+        slot_recent = slot_infos[slot_id_we_used_to_load_from]
+    elif slot_infos:
+        slot_recent = list(slot_infos.values())[0]
+
     slot_id_tmp = f"{slot_id}.tmp.{int(time.time())}"
     host, port = parse_host_port(storage_host)
     check_call(
@@ -328,6 +341,10 @@ def action_store(
         print_elapsed=True,
     )
 
+    if meta:
+        meta.full_snapshot_history.insert(0, slot_id)
+        meta.write_to(local_dir=local_dir)
+
     print(
         check_output_script(
             host=storage_host,
@@ -343,9 +360,6 @@ def action_store(
         end="",
     )
 
-    if meta:
-        meta.write_to(local_dir=local_dir)
-
 
 #
 # Runs the maintenance script for the storage.
@@ -354,13 +368,13 @@ def action_maintenance(
     *,
     storage_host: str | None,
     storage_dir: str,
-    max_age_sec: int,
+    storage_max_age_sec: int,
 ):
     print(
         check_output_script(
             host=storage_host,
             script=SCRIPTS["MAINTENANCE"],
-            args=[storage_dir, str(max_age_sec)],
+            args=[storage_dir, str(storage_max_age_sec)],
             indent=True,
         ),
         end="",
@@ -390,7 +404,7 @@ def list_slots(
             slot_id = match.group(1)
             slot_infos[slot_id] = SlotInfo(
                 id=slot_id,
-                age=int(match.group(2)),
+                age_sec=int(match.group(2)),
                 meta=SlotMeta.deserialize(
                     match.group(3).encode().decode("unicode_escape")
                 ),
@@ -673,7 +687,7 @@ class SlotMeta:
 @dataclasses.dataclass
 class SlotInfo:
     id: str
-    age: int
+    age_sec: int
     meta: SlotMeta
 
 
@@ -812,7 +826,7 @@ SCRIPTS = {
         *STDOUT->autoflush(1);
         *STDERR->autoflush(1);
         my $storage_dir = $ARGV[0] or die("storage_dir argument required\n");
-        my $max_age_sec = $ARGV[1] or die("max_age_sec argument required\n");
+        my $storage_max_age_sec = $ARGV[1] or die("storage_max_age_sec argument required\n");
         length($storage_dir) >= 3 or die("storage_dir is suspiciously short\n");
         my $lock_file = "$storage_dir/maintenance.lock";
         open(my $lock, ">>", $lock_file) or die("open $lock_file: $!\n");
@@ -832,7 +846,10 @@ SCRIPTS = {
                 # Never delete the latest slot, even if it is old.
                 next;
             }
-            if ($age_sec > $max_age_sec || $is_bak && $age_sec > %(STORAGE_MAX_AGE_SEC_BAK)d) {
+            if (
+                $age_sec > $storage_max_age_sec ||
+                $is_bak && $age_sec > %(STORAGE_MAX_AGE_SEC_BAK)d
+            ) {
                 push(@rm_dirs, $dir);
                 print("will remove $dir (age: $age_sec sec) in background\n");
             }

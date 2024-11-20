@@ -4,7 +4,7 @@ set -e -o pipefail
 # shellcheck disable=SC2154
 trap '
   exitcode=$?
-  set +o xtrace
+  { set +o xtrace; } 2>/dev/null
   if [[ "$exitcode" != 0 ]]; then
     echo
     echo "FAILED! Last output was:"
@@ -30,6 +30,13 @@ touch $LOCAL_DIR/dir-a/file-a-1
 
 ci-storage() {
   ../ci-storage --local-dir="$LOCAL_DIR" --storage-dir="$STORAGE_DIR" "$@" &>$OUT
+}
+
+hardlink-count() {
+  { set +o xtrace; } 2>/dev/null
+  # shellcheck disable=SC2012
+  ls -l "$1" | awk '{print $2}'
+  { set -o xtrace; } 2>/dev/null
 }
 
 set -x

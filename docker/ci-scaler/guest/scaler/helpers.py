@@ -248,7 +248,7 @@ class PostJsonHttpRequestHandler(http.server.BaseHTTPRequestHandler):
     sys_version = "1.0"
     log_suffix = ""
 
-    def handle_POST_json(self, data: dict[str, Any], data_bytes: bytes) -> None:
+    def handle_POST_json(self, data: Any, data_bytes: bytes) -> None:
         self.send_error(404, "No handler for POST request overridden")
         pass
 
