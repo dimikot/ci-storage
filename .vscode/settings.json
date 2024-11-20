@@ -9,6 +9,8 @@
     "hardlink",
     "mtimes",
     "myslot",
-    "tmpfs"
+    "oneline",
+    "tmpfs",
+    "topo"
   ]
 }

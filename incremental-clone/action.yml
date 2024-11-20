@@ -32,7 +32,7 @@ runs:
         fi
 
         git status
-        git log -10 --oneline
+        git log --topo-order -10 --oneline
         git checkout FETCH_HEAD
         git status
-        git log -10 --oneline
+        git log --topo-order -10 --oneline
