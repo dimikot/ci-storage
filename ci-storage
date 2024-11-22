@@ -165,6 +165,7 @@ def main():
         action_load(
             storage_host=storage_host,
             storage_dir=storage_dir,
+            storage_max_age_sec=storage_max_age_sec,
             slot_ids=slot_ids,
             local_dir=local_dir,
             exclude=exclude,
@@ -189,6 +190,7 @@ def action_load(
     *,
     storage_host: str | None,
     storage_dir: str,
+    storage_max_age_sec: int,
     slot_ids: list[str],
     local_dir: str,
     exclude: list[str],
@@ -204,6 +206,7 @@ def action_load(
     slot_infos = list_slots(
         storage_host=storage_host,
         storage_dir=storage_dir,
+        storage_max_age_sec=storage_max_age_sec,
     )
 
     slot_id = ""
@@ -308,14 +311,11 @@ def action_store(
     slot_infos = list_slots(
         storage_host=storage_host,
         storage_dir=storage_dir,
+        storage_max_age_sec=storage_max_age_sec,
     )
 
     slot_recent = None
-    if (
-        slot_id_we_used_to_load_from in slot_infos
-        and slot_infos[slot_id_we_used_to_load_from].age_sec
-        < storage_max_age_sec - STORAGE_MAX_AGE_SEC_BAK
-    ):
+    if slot_id_we_used_to_load_from in slot_infos:
         slot_recent = slot_infos[slot_id_we_used_to_load_from]
     elif slot_infos:
         slot_recent = list(slot_infos.values())[0]
@@ -385,12 +385,16 @@ def action_maintenance(
 # Returns the list of existing slot ids and their ages in seconds, sorted by age
 # (i.e. most recently created slots on top of the list). Also, as a side effect,
 # touches the newest slot directory on the server (assuming it'll be accessed),
-# so it will unlikely be garbage collected anytime soon.
+# so it will unlikely be garbage collected anytime soon. Only the slots which
+# are not about to be garbage collected within the next STORAGE_MAX_AGE_SEC_BAK
+# will be returned (since returning the older ones is dangerous: they may start
+# being deleted right at the moment when we load or store).
 #
 def list_slots(
     *,
     storage_host: str | None,
     storage_dir: str,
+    storage_max_age_sec: int,
 ) -> collections.OrderedDict[str, SlotInfo]:
     slot_infos = collections.OrderedDict[str, SlotInfo]()
     lines = check_output_script(
@@ -401,14 +405,15 @@ def list_slots(
     for line in lines.splitlines():
         match = re.match(r"^(\S+) (\d+) (.*)$", line)
         if match:
-            slot_id = match.group(1)
-            slot_infos[slot_id] = SlotInfo(
-                id=slot_id,
+            slot_info = SlotInfo(
+                id=match.group(1),
                 age_sec=int(match.group(2)),
                 meta=SlotMeta.deserialize(
                     match.group(3).encode().decode("unicode_escape")
                 ),
             )
+            if slot_info.age_sec < storage_max_age_sec - STORAGE_MAX_AGE_SEC_BAK:
+                slot_infos[slot_info.id] = slot_info
     return slot_infos
 
 
