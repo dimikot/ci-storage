@@ -12,6 +12,6 @@ ci-storage \
   load || error=$?
 
 test "$error" == 0
-grep -qF 'Checking slot-id="absent1"... not found in the storage' "$OUT"
-grep -qF 'Checking slot-id="absent2"... not found in the storage' "$OUT"
-grep -qF 'Checking slot-id="*"... using the most recent slot-id="myslot" for the full (non-layer) load' "$OUT"
+grep -qF 'Checking slot-id="absent1"... not found' "$OUT"
+grep -qF 'Checking slot-id="absent2"... not found' "$OUT"
+grep -qF 'Checking slot-id="*"... loading the most recent full (non-layer) slot-id="myslot"' "$OUT"

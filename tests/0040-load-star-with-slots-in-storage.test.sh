@@ -10,4 +10,4 @@ ci-storage \
   load || error=$?
 
 test "$error" == 0
-grep -qF 'Checking slot-id="*"... using the most recent slot-id="myslot" for the full (non-layer) load' "$OUT"
+grep -qF 'Checking slot-id="*"... loading the most recent full (non-layer) slot-id="myslot"' "$OUT"

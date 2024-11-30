@@ -184,7 +184,8 @@ def main():
 # enough" slot from the storage:
 # - If we are loading a layer, then we try to use the slot id which "best
 #   matches" the full (non-layer) snapshot loaded in the past.
-# - If we are loading a full snapshot,
+# - If we are loading a full snapshot, then just use the most recent slot in the
+#   storage.
 #
 def action_load(
     *,
@@ -197,11 +198,9 @@ def action_load(
     layer: list[str],
     verbose: bool,
 ):
-    full_snapshot_history = None
-    if layer:
-        os.makedirs(local_dir, exist_ok=True)
-        meta = SlotMeta.read_from(local_dir=local_dir)
-        full_snapshot_history = meta.full_snapshot_history
+    os.makedirs(local_dir, exist_ok=True)
+    meta = SlotMeta.read_from(local_dir=local_dir)
+    full_snapshot_history = meta.full_snapshot_history
 
     slot_infos = list_slots(
         storage_host=storage_host,
@@ -209,53 +208,55 @@ def action_load(
         storage_max_age_sec=storage_max_age_sec,
     )
 
+    in_storage = "layer storage" if layer else "storage"
     slot_id = ""
     for id in map(normalize_slot_id, slot_ids):
         prefix = f'Checking slot-id="{id}"...'
         if id == "*":
             if not slot_infos:
-                print(f"{prefix} storage has no slots, so exiting with a no-op")
+                print(f"{prefix} {in_storage} has no slots, so exiting with a no-op")
                 return
-            elif full_snapshot_history is None:
+            elif not layer:
                 slot_id = list(slot_infos.keys())[0]
                 print(
-                    f'{prefix} using the most recent slot-id="{slot_id}" for the full (non-layer) load'
+                    f'{prefix} loading the most recent full (non-layer) slot-id="{slot_id}"'
                 )
                 break
-            elif len(full_snapshot_history) > 0:
-                print(
-                    f"{prefix} prioritizing slots from past full snapshot loading history..."
-                )
-                for id in full_snapshot_history:
-                    prefix = f'Checking slot-id="{id}" from history...'
-                    if id in slot_infos:
-                        slot_id = id
-                        print(f"{prefix} found in the storage, using it")
-                        break
-                    else:
-                        print(f"{prefix} not found in the storage")
-                if not slot_id:
+            elif layer:
+                if full_snapshot_history:
+                    print(
+                        f"{prefix} prioritizing layer slots mentioned in the past full snapshot loading history..."
+                    )
+                    for id in full_snapshot_history:
+                        prefix = f'Checking slot-id="{id}" from history...'
+                        if id in slot_infos:
+                            slot_id = id
+                            print(f"{prefix} found in the {in_storage}, using it")
+                            break
+                        else:
+                            print(f"{prefix} not found in the {in_storage}")
+                    if not slot_id:
+                        slot_id = list(slot_infos.keys())[0]
+                        print(
+                            f'No slots from past full snapshot loading history were found in the {in_storage}, so using just the most recent slot-id="{slot_id}"'
+                        )
+                    break
+                else:
                     slot_id = list(slot_infos.keys())[0]
                     print(
-                        f'None slots from past full snapshot loading history were found in the storage, so using just the most recent slot-id="{slot_id}"'
+                        f'{prefix} no past loading history, so using just the most recent layer slot-id="{slot_id}"'
                     )
-                break
-            else:
-                slot_id = list(slot_infos.keys())[0]
-                print(
-                    f'{prefix} no past loading history, so using just the most recent slot-id="{slot_id}"'
-                )
-                break
+                    break
         elif id in slot_infos:
             slot_id = id
-            print(f"{prefix} found in the storage, using it")
+            print(f"{prefix} found in the {in_storage}, using it")
             break
         else:
-            print(f"{prefix} not found in the storage")
+            print(f"{prefix} not found in the {in_storage}")
 
     if not slot_id:
         raise UserException(
-            f"none of the provided slot id(s) were found in the storage, aborting"
+            f"none of the provided slot id(s) were found in the {in_storage}, aborting"
         )
 
     host, port = parse_host_port(storage_host)

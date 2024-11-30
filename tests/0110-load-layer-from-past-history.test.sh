@@ -44,10 +44,10 @@ ci-storage \
   load
 
 test -f "$LOCAL_DIR/file-in-layer-1"
-grep -qF 'Checking slot-id="slot_without_layer_2"... not found in the storage' "$OUT"
-grep -qF 'Checking slot-id="*"... prioritizing slots from past full snapshot loading history...' "$OUT"
-grep -qF 'Checking slot-id="slot_without_layer_2" from history... not found in the storage' "$OUT"
-grep -qF 'Checking slot-id="slot_with_layer_1" from history... found in the storage, using it' "$OUT"
+grep -qF 'Checking slot-id="slot_without_layer_2"... not found' "$OUT"
+grep -qF 'Checking slot-id="*"... prioritizing' "$OUT"
+grep -qF 'Checking slot-id="slot_without_layer_2" from history... not found' "$OUT"
+grep -qF 'Checking slot-id="slot_with_layer_1" from history... found' "$OUT"
 
 ci-storage \
   --slot-id=slot_with_layer_1 \

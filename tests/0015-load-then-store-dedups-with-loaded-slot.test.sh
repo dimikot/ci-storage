@@ -26,7 +26,7 @@ test "$(hardlink-count "$STORAGE_DIR/myslot3-late/file")" == 2
 # Just in case, load from myslot3-late, and since it has been dedupped with
 # myslot1-early, they should all dedup between each other.
 ci-storage --slot-id="*" load
-grep -qF 'Checking slot-id="*"... using the most recent slot-id="myslot3-late"' "$OUT"
+grep -qF 'Checking slot-id="*"... loading the most recent full (non-layer) slot-id="myslot3-late"' "$OUT"
 
 ci-storage --slot-id="myslot4-end" store
 grep -qF -- '--link-dest=../myslot3-late/' "$OUT"
