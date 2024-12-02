@@ -30,7 +30,12 @@ RUN true \
     && chmod a+r /etc/apt/keyrings/docker.asc \
     && echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" | tee /etc/apt/sources.list.d/docker.list \
     && apt-get update -y \
-    && apt-get install -y --no-install-recommends docker-ce docker-ce-cli containerd.io docker-compose-plugin docker-buildx-plugin skopeo \
+    && apt-get install -y --no-install-recommends skopeo \
+        "docker-ce=5:27.3.1-1~ubuntu.22.04~jammy" \
+        "docker-ce-cli=5:27.3.1-1~ubuntu.22.04~jammy" \
+        "containerd.io=1.7.23-1" \
+        "docker-compose-plugin=2.29.7-1~ubuntu.22.04~jammy" \
+        "docker-buildx-plugin=0.17.1-1~ubuntu.22.04~jammy" \
     && sed -i -e "s/ulimit -Hn/ulimit -n/" /etc/init.d/docker
 
 # Add user "guest" with access to "docker" group.
