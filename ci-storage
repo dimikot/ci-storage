@@ -91,6 +91,13 @@ def main():
         help="local directory path",
     )
     parser.add_argument(
+        "--hint",
+        type=str,
+        default=[],
+        action="append",
+        help='optional hints of the CI run to let slot-id="*" specifier find the best slot in the storage to load from; the leftmost matching hints have higher priority',
+    )
+    parser.add_argument(
         "--exclude",
         type=str,
         default=[],
@@ -124,6 +131,7 @@ def main():
     )
     slot_ids: list[str] = " ".join(args.slot_id).split()
     local_dir: str = re.sub(r"/+$", "", args.local_dir)
+    hints: list[str] = " ".join(args.hint).split()
     exclude: list[str] = [
         line for line in "\n".join(args.exclude).splitlines() if line.strip()
     ]
@@ -151,6 +159,7 @@ def main():
             storage_max_age_sec=storage_max_age_sec,
             slot_id=slot_ids[0],
             local_dir=local_dir,
+            hints=hints,
             exclude=exclude,
             layer=layer,
             verbose=verbose,
@@ -160,15 +169,16 @@ def main():
             storage_dir=storage_dir,
             storage_max_age_sec=storage_max_age_sec,
         )
-    if action == "load":
+    elif action == "load":
         if not slot_ids:
-            parser.error(f"for {action} action, at one or many --slot-id is required")
+            parser.error(f"for {action} action, one or many --slot-id is required")
         action_load(
             storage_host=storage_host,
             storage_dir=storage_dir,
             storage_max_age_sec=storage_max_age_sec,
             slot_ids=slot_ids,
             local_dir=local_dir,
+            hints=hints,
             exclude=exclude,
             layer=layer,
             verbose=verbose,
@@ -185,8 +195,10 @@ def main():
 # enough" slot from the storage:
 # - If we are loading a layer, then we try to use the slot id which "best
 #   matches" the full (non-layer) snapshot loaded in the past.
-# - If we are loading a full snapshot, then just use the most recent slot in the
-#   storage.
+# - If we are loading a full snapshot, then first try to use the slot which has
+#   the largest number of the common hints with the passed hints list (leftmost
+#   hints elements have higher priority). In worst case, just use the most
+#   recent slot in the storage.
 #
 def action_load(
     *,
@@ -195,13 +207,12 @@ def action_load(
     storage_max_age_sec: int,
     slot_ids: list[str],
     local_dir: str,
+    hints: list[str],
     exclude: list[str],
     layer: list[str],
     verbose: bool,
 ):
     os.makedirs(local_dir, exist_ok=True)
-    meta = SlotMeta.read_from(local_dir=local_dir)
-    full_snapshot_history = meta.full_snapshot_history
 
     slot_infos = list_slots(
         storage_host=storage_host,
@@ -209,20 +220,16 @@ def action_load(
         storage_max_age_sec=storage_max_age_sec,
     )
 
-    in_storage = "layer storage" if layer else "storage"
-    slot_id = ""
+    storage = "layer storage" if layer else "storage"
+    slot_id: str | None = None
     for id in map(normalize_slot_id, slot_ids):
         prefix = f'Checking slot-id="{id}"...'
         if id == "*":
             if not slot_infos:
                 if layer:
-                    print(
-                        f"{prefix} {in_storage} has no slots, so exiting with a no-op"
-                    )
+                    print(f"{prefix} {storage} has no slots, so exiting with a no-op")
                 else:
-                    print(
-                        f"{prefix} {in_storage} has no slots, so cleaning f{local_dir}"
-                    )
+                    print(f"{prefix} {storage} has no slots, so cleaning f{local_dir}")
                     action_clean(
                         local_dir=local_dir,
                         exclude=exclude,
@@ -230,46 +237,31 @@ def action_load(
                     )
                 return
             elif not layer:
-                slot_id = list(slot_infos.keys())[0]
-                print(
-                    f'{prefix} loading the most recent full (non-layer) slot-id="{slot_id}"'
+                slot_id = infer_best_slot_to_load_full_from(
+                    prefix=prefix,
+                    slot_infos=list(slot_infos.values()),
+                    hints=hints,
                 )
                 break
             elif layer:
-                if full_snapshot_history:
-                    print(
-                        f"{prefix} prioritizing layer slots mentioned in the past full snapshot loading history..."
-                    )
-                    for id in full_snapshot_history:
-                        prefix = f'Checking slot-id="{id}" from history...'
-                        if id in slot_infos:
-                            slot_id = id
-                            print(f"{prefix} found in the {in_storage}, using it")
-                            break
-                        else:
-                            print(f"{prefix} not found in the {in_storage}")
-                    if not slot_id:
-                        slot_id = list(slot_infos.keys())[0]
-                        print(
-                            f'No slots from past full snapshot loading history were found in the {in_storage}, so using just the most recent slot-id="{slot_id}"'
-                        )
-                    break
-                else:
-                    slot_id = list(slot_infos.keys())[0]
-                    print(
-                        f'{prefix} no past loading history, so using just the most recent layer slot-id="{slot_id}"'
-                    )
-                    break
+                slot_id = infer_best_slot_to_load_layer_from(
+                    prefix=prefix,
+                    slot_infos=list(slot_infos.values()),
+                    full_snapshot_history=SlotMeta.read_from(
+                        local_dir=local_dir
+                    ).full_snapshot_history,
+                )
+                break
         elif id in slot_infos:
             slot_id = id
-            print(f"{prefix} found in the {in_storage}, using it")
+            print(f"{prefix} found in the {storage}, using it")
             break
         else:
-            print(f"{prefix} not found in the {in_storage}")
+            print(f"{prefix} not found in the {storage}")
 
     if not slot_id:
         raise UserException(
-            f"none of the provided slot id(s) were found in the {in_storage}, aborting"
+            f"none of the provided slot id(s) were found in the {storage}, aborting"
         )
 
     host, port = parse_host_port(storage_host)
@@ -297,42 +289,6 @@ def action_load(
 
 
 #
-# Removes everything in local_dir. We use rsync and not rm to keep the excludes
-# intact and compatible with the "load" action.
-#
-def action_clean(
-    *,
-    local_dir: str,
-    exclude: list[str],
-    verbose: bool,
-):
-    empty_dir = f"{TEMP_DIR}/{EMPTY_DIR}.{normalize_slot_id(local_dir)}"
-    os.makedirs(empty_dir, exist_ok=True)
-    try:
-        check_call(
-            cmd=[
-                "rsync",
-                *build_rsync_args(
-                    host=None,
-                    port=None,
-                    action="load",
-                    exclude=exclude,
-                    layer=[],
-                    verbose=verbose,
-                ),
-                f"{empty_dir}/",
-                f"{local_dir}/",
-            ],
-            print_elapsed=True,
-        )
-    finally:
-        try:
-            os.rmdir(empty_dir)
-        except Exception:
-            pass
-
-
-#
 # Stores the content of the local directory in the storage with the provided
 # slot id on a remote host.
 #
@@ -343,13 +299,14 @@ def action_store(
     storage_max_age_sec: int,
     slot_id: str,
     local_dir: str,
+    hints: list[str],
     exclude: list[str],
     layer: list[str],
     verbose: bool,
 ):
     slot_id = normalize_slot_id(slot_id)
     if slot_id == "*":
-        raise UserException(f'slot_id="{slot_id}" is not allowed for "store" action')
+        raise UserException(f'slot-id="{slot_id}" is not allowed for "store" action')
 
     meta = None
     slot_id_we_used_to_load_from = None
@@ -393,6 +350,7 @@ def action_store(
 
     if meta:
         meta.full_snapshot_history.insert(0, slot_id)
+        meta.hints = hints
         meta.write_to(local_dir=local_dir)
 
     print(
@@ -409,6 +367,42 @@ def action_store(
         ),
         end="",
     )
+
+
+#
+# Removes everything in local_dir. We use rsync and not rm to keep the excludes
+# intact and compatible with the "load" action.
+#
+def action_clean(
+    *,
+    local_dir: str,
+    exclude: list[str],
+    verbose: bool,
+):
+    empty_dir = f"{TEMP_DIR}/{EMPTY_DIR}.{normalize_slot_id(local_dir)}"
+    os.makedirs(empty_dir, exist_ok=True)
+    try:
+        check_call(
+            cmd=[
+                "rsync",
+                *build_rsync_args(
+                    host=None,
+                    port=None,
+                    action="load",
+                    exclude=exclude,
+                    layer=[],
+                    verbose=verbose,
+                ),
+                f"{empty_dir}/",
+                f"{local_dir}/",
+            ],
+            print_elapsed=True,
+        )
+    finally:
+        try:
+            os.rmdir(empty_dir)
+        except Exception:
+            pass
 
 
 #
@@ -429,6 +423,89 @@ def action_maintenance(
         ),
         end="",
     )
+
+
+#
+# Given the list of slots in the storage, returns the one which we want the load
+# action with slot-id="*" to match.
+#
+def infer_best_slot_to_load_full_from(
+    *,
+    prefix: str,
+    slot_infos: list[SlotInfo],
+    hints: list[str],
+) -> str:
+    if not hints:
+        id = slot_infos[0].id
+        print(f'{prefix} loading the most recent full (non-layer) slot-id="{id}"')
+        return id
+
+    print(f"{prefix} prioritizing slots matching hints...")
+    weights: list[tuple[int, int, str]] = []
+    for slot_info in slot_infos:
+        weight = ""
+        matched_hints: list[str] = []
+        for hint in hints:
+            if hint in slot_info.meta.hints:
+                weight += "1"
+                matched_hints.append(hint)
+            else:
+                weight += "0"
+        if matched_hints:
+            print(
+                f'Checking slot-id="{slot_info.id}" from the storage... weight: {weight}, matched hints: {", ".join(matched_hints)}, age: {slot_info.age_sec} sec'
+            )
+            weights.append((int(weight), -1 * slot_info.age_sec, slot_info.id))
+    weights.sort(reverse=True)
+    if weights:
+        id = weights[0][2]
+        print(f'Winner: slot-id="{id}"; loading it, since it has the highest weight')
+        return id
+    else:
+        id = slot_infos[0].id
+        print(
+            f'No slots matching hints, so loading the most recent full (non-layer) slot-id="{id}"'
+        )
+        return id
+
+
+#
+# Given the list of slots in the storage, returns the one which we want the
+# layer load action with slot-id="*" to match.
+#
+def infer_best_slot_to_load_layer_from(
+    *,
+    prefix: str,
+    slot_infos: list[SlotInfo],
+    full_snapshot_history: list[str],
+) -> str:
+    if not full_snapshot_history:
+        id = slot_infos[0].id
+        print(
+            f'{prefix} no past loading history, so using just the most recent layer slot-id="{id}"'
+        )
+        return id
+
+    print(
+        f"{prefix} prioritizing layer slots mentioned in the past full snapshot loading history..."
+    )
+    slot_info_ids = set(slot_info.id for slot_info in slot_infos)
+    for id in full_snapshot_history:
+        if id in slot_info_ids:
+            print(
+                f'Checking slot-id="{id}" from history... found in the layer storage, using it'
+            )
+            return id
+        else:
+            print(
+                f'Checking slot-id="{id}" from history... not found in the layer storage'
+            )
+
+    id = slot_infos[0].id
+    print(
+        f'No slots from past full snapshot loading history were found in the layer storage, so using just the most recent slot-id="{id}"'
+    )
+    return id
 
 
 #
@@ -700,10 +777,14 @@ class SlotMeta:
     # Each time a dir is loaded from some slot (using "*" or by a concrete slot
     # id), we prepend slot id to this property.
     full_snapshot_history: list[str] = dataclasses.field(default_factory=list[str])
+    # Hints related to the content of the slot (e.g. commit hash, SHA of
+    # package-lock.json or any other large-content defining file etc.).
+    hints: list[str] = dataclasses.field(default_factory=list[str])
 
     def serialize(self) -> str:
         serialized = ""
         serialized += f"full_snapshot_history={' '.join(unique(self.full_snapshot_history)[0:MAX_FULL_SNAPSHOT_HISTORY])}\n"
+        serialized += f"hints={' '.join(unique(self.hints))}\n"
         return serialized
 
     @staticmethod
@@ -717,6 +798,8 @@ class SlotMeta:
                 value: str = match.group(2).strip()
                 if key == "full_snapshot_history":
                     self.full_snapshot_history = unique(value.split())
+                elif key == "hints":
+                    self.hints = unique(value.split())
         return self
 
     def write_to(self, *, local_dir: str) -> None:
