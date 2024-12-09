@@ -17,7 +17,8 @@ STORAGE_MAX_AGE_SEC_DEFAULT = 3600
 STORAGE_MAX_AGE_SEC_BAK = 60
 STORAGE_DIR_DEFAULT = "~/ci-storage"
 META_FILE = ".ci-storage.meta"
-LOCAL_META_FILE_DIR = "/tmp" if os.access("/tmp", os.W_OK) else tempfile.gettempdir()
+EMPTY_DIR = ".ci-storage.empty-dir"
+TEMP_DIR = "/tmp" if os.access("/tmp", os.W_OK) else tempfile.gettempdir()
 MAX_FULL_SNAPSHOT_HISTORY = 10
 
 
@@ -214,7 +215,19 @@ def action_load(
         prefix = f'Checking slot-id="{id}"...'
         if id == "*":
             if not slot_infos:
-                print(f"{prefix} {in_storage} has no slots, so exiting with a no-op")
+                if layer:
+                    print(
+                        f"{prefix} {in_storage} has no slots, so exiting with a no-op"
+                    )
+                else:
+                    print(
+                        f"{prefix} {in_storage} has no slots, so cleaning f{local_dir}"
+                    )
+                    action_clean(
+                        local_dir=local_dir,
+                        exclude=exclude,
+                        verbose=verbose,
+                    )
                 return
             elif not layer:
                 slot_id = list(slot_infos.keys())[0]
@@ -281,6 +294,42 @@ def action_load(
         slot_info = slot_infos[slot_id]
         slot_info.meta.full_snapshot_history.insert(0, slot_id)
         slot_info.meta.write_to(local_dir=local_dir)
+
+
+#
+# Removes everything in local_dir. We use rsync and not rm to keep the excludes
+# intact and compatible with the "load" action.
+#
+def action_clean(
+    *,
+    local_dir: str,
+    exclude: list[str],
+    verbose: bool,
+):
+    empty_dir = f"{TEMP_DIR}/{EMPTY_DIR}.{normalize_slot_id(local_dir)}"
+    os.makedirs(empty_dir, exist_ok=True)
+    try:
+        check_call(
+            cmd=[
+                "rsync",
+                *build_rsync_args(
+                    host=None,
+                    port=None,
+                    action="load",
+                    exclude=exclude,
+                    layer=[],
+                    verbose=verbose,
+                ),
+                f"{empty_dir}/",
+                f"{local_dir}/",
+            ],
+            print_elapsed=True,
+        )
+    finally:
+        try:
+            os.rmdir(empty_dir)
+        except Exception:
+            pass
 
 
 #
@@ -684,7 +733,7 @@ class SlotMeta:
 
     @staticmethod
     def _path(local_dir: str) -> str:
-        return f"{LOCAL_META_FILE_DIR}/{META_FILE}.{normalize_slot_id(local_dir)}"
+        return f"{TEMP_DIR}/{META_FILE}.{normalize_slot_id(local_dir)}"
 
 
 #
