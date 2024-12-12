@@ -3,6 +3,8 @@ from __future__ import annotations
 import argparse
 import collections
 import dataclasses
+import glob
+import hashlib
 import os.path
 import re
 import shlex
@@ -131,7 +133,7 @@ def main():
     )
     slot_ids: list[str] = " ".join(args.slot_id).split()
     local_dir: str = re.sub(r"/+$", "", args.local_dir)
-    hints: list[str] = " ".join(args.hint).split()
+    hints: list[str] = [hint for arg in args.hint for hint in expand_hint_arg(arg=arg)]
     exclude: list[str] = [
         line for line in "\n".join(args.exclude).splitlines() if line.strip()
     ]
@@ -629,6 +631,50 @@ def check_call(
             )
         elif print_elapsed:
             print(elapsed)
+
+
+#
+# Given a hint argument value, expands it to hints:
+# - If the argument starts with "@", then it expands to a digest of the content
+#   of all files matching the space-separated list of patterns after the "@".
+# - If the argument contains multiple space-separated values, then it treats
+#   them as a list of hints.
+#
+def expand_hint_arg(*, arg: str) -> list[str]:
+    if arg.startswith("@"):
+        items = arg[1:].strip().split()
+        item_patterns = [item for item in items if is_wildcard(item)]
+        item_files = [item for item in items if not is_wildcard(item)]
+        files = sorted(
+            [
+                *item_files,
+                *[
+                    file
+                    for pattern in item_patterns
+                    for file in glob.glob(pattern, recursive=True)
+                ],
+            ]
+        )
+        print(cmd_to_debug_prompt(["sha256sum", *files]))
+        m = hashlib.sha256()
+        for file in files:
+            try:
+                with open(file, "rb") as f:
+                    m.update(f.read())
+            except OSError as e:
+                raise UserException(f"{e.strerror}: {e.filename}")
+        hint = "@" + m.hexdigest()[0:16]
+        print(f"  {hint}")
+        return [hint]
+    else:
+        return arg.strip().split()
+
+
+#
+# Returns true if the path is a wildcard pattern.
+#
+def is_wildcard(path: str) -> bool:
+    return "*" in path or "?" in path
 
 
 #

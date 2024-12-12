@@ -8,7 +8,7 @@ trap '
   if [[ "$exitcode" != 0 ]]; then
     echo
     echo "FAILED! Last output was:"
-    echo "==================="
+    echo "========================"
     cat $OUT
     exit 1
   fi
