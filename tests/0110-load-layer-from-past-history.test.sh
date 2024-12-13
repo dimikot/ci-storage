@@ -5,7 +5,7 @@ ci-storage \
   --slot-id=slot_with_layer_1 \
   store
 
-grep -qE "full_snapshot_history=slot_with_layer_1\$" "$META_FILE"
+grep -qE "full_snapshot_history=slot_with_layer_1\$" "$LOCAL_META_FILE"
 
 touch "$LOCAL_DIR/file-in-layer-1"
 ci-storage \
@@ -28,13 +28,13 @@ ci-storage \
   store
 rm "$LOCAL_DIR/file-in-layer-another"
 
-grep -qE "full_snapshot_history=slot_without_layer_2 slot_with_layer_1\$" "$META_FILE"
+grep -qE "full_snapshot_history=slot_without_layer_2 slot_with_layer_1\$" "$LOCAL_META_FILE"
 
 ci-storage \
   --slot-id=slot_without_layer_2 \
   load
 
-grep -qE "full_snapshot_history=slot_without_layer_2 slot_with_layer_1\$" "$META_FILE"
+grep -qE "full_snapshot_history=slot_without_layer_2 slot_with_layer_1\$" "$LOCAL_META_FILE"
 
 ci-storage \
   --slot-id=slot_without_layer_2 \
@@ -53,4 +53,4 @@ ci-storage \
   --slot-id=slot_with_layer_1 \
   load
 
-grep -qE "full_snapshot_history=slot_with_layer_1\$" "$META_FILE"
+grep -qE "full_snapshot_history=slot_with_layer_1\$" "$LOCAL_META_FILE"

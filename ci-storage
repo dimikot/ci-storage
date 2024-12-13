@@ -97,7 +97,7 @@ def main():
         type=str,
         default=[],
         action="append",
-        help='optional hints of the CI run to let slot-id="*" specifier find the best slot in the storage to load from; the leftmost matching hints have higher priority',
+        help='optional hints of the CI run to let slot-id="*" specifier find the best slot in the storage to load from; the leftmost matching hints have higher priority; on "store" action, if --hint is not provided, the hints are derived from the previous "load" action',
     )
     parser.add_argument(
         "--exclude",
@@ -237,6 +237,12 @@ def action_load(
                         exclude=exclude,
                         verbose=verbose,
                     )
+                    # Write hints, so next time we call "store" action, we don't
+                    # have to pass them again, the hints will be derived from
+                    # the "load" action.
+                    meta = SlotMeta.read_from(local_dir=local_dir)
+                    meta.hints = hints
+                    meta.write_to(local_dir=local_dir)
                 return
             elif not layer:
                 slot_id = infer_best_slot_to_load_full_from(
@@ -286,6 +292,9 @@ def action_load(
 
     if not layer:
         slot_info = slot_infos[slot_id]
+        # We update full_snapshot_history to remember the actual slot "*" has
+        # just loaded from, to allow the next "store" action better choose the
+        # "dedupping" slot with --link-dest.
         slot_info.meta.full_snapshot_history.insert(0, slot_id)
         slot_info.meta.write_to(local_dir=local_dir)
 
@@ -309,6 +318,9 @@ def action_store(
     slot_id = normalize_slot_id(slot_id)
     if slot_id == "*":
         raise UserException(f'slot-id="{slot_id}" is not allowed for "store" action')
+
+    if not hints:
+        hints = SlotMeta.read_from(local_dir=local_dir).hints
 
     meta = None
     slot_id_we_used_to_load_from = None

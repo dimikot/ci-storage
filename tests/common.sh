@@ -17,7 +17,7 @@ trap '
 export STORAGE_DIR=/tmp/ci-storage/storage_dir
 export LOCAL_DIR=/tmp/ci-storage/local_dir
 export OUT=/tmp/ci-storage/out.txt
-export META_FILE=/tmp/.ci-storage.meta._tmp_ci-storage_local_dir
+export LOCAL_META_FILE=/tmp/.ci-storage.meta._tmp_ci-storage_local_dir
 export error=0
 
 rm -rf $STORAGE_DIR* $LOCAL_DIR* $OUT /tmp/.ci-storage.meta*

@@ -16,5 +16,5 @@ ci-storage \
   load
 
 grep -qF 'Checking slot-id="myslot"... found in the storage, using it' "$OUT"
-grep -qE 'full_snapshot_history=myslot$' "$META_FILE"
-grep -qE 'hints=aaa bbb ccc$' "$META_FILE"
+grep -qE 'full_snapshot_history=myslot$' "$LOCAL_META_FILE"
+grep -qE 'hints=aaa bbb ccc$' "$LOCAL_META_FILE"
