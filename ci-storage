@@ -56,27 +56,27 @@ def main():
         "action",
         type=str,
         choices=["store", "load"],
-        help="action to run",
+        help="Action to run.",
     )
     parser.add_argument(
         "--storage-host",
         type=str,
         required=False,
-        help="storage host in the format [user@]host[:port]; it must allow password-free SSH key based access; if omitted, uses the local filesystem (no SSH)",
+        help="Storage host in the format [user@]host[:port]. It must allow password-free SSH key based access. If omitted, uses the local filesystem (no SSH).",
     )
     parser.add_argument(
         "--storage-dir",
         type=str,
         default=STORAGE_DIR_DEFAULT,
         required=False,
-        help=f"storage directory path on the storage host (will be created if it does not exist)",
+        help=f"Storage directory path on the storage host (will be created if it does not exist).",
     )
     parser.add_argument(
         "--storage-max-age-sec",
         type=str,
         default=str(STORAGE_MAX_AGE_SEC_DEFAULT),
         required=False,
-        help="remove slots created earlier than this many seconds ago",
+        help="Remove slots created earlier than this many seconds ago.",
     )
     parser.add_argument(
         "--slot-id",
@@ -84,40 +84,40 @@ def main():
         required=True,
         default=[],
         action="append",
-        help='id of the slot to store to or load from; use "*" to load a smart-random slot (e.g. most recent or best in terms of layer compatibility) and skip if it does not exist; when loading, you may provide multiple --slot-id options to try loading them in order',
+        help='Id of the slot to store to or load from. Use "*" to load a smart-random slot (e.g. most recent or best in terms of layer compatibility) and skip if it does not exist. When loading, you may provide multiple --slot-id options to try loading them in order.',
     )
     parser.add_argument(
         "--local-dir",
         type=str,
         required=True,
-        help="local directory path",
+        help="Local directory path.",
     )
     parser.add_argument(
         "--hint",
         type=str,
         default=[],
         action="append",
-        help='optional hints of the CI run to let slot-id="*" specifier find the best slot in the storage to load from; the leftmost matching hints have higher priority; on "store" action, if --hint is not provided, the hints are derived from the previous "load" action',
+        help='Optional hints of the CI run to let slot-id="*" specifier find the best slot in the storage to load from. The leftmost matching hints have higher priority. If a line in multi-line hint starts with "@", then it expands to a digest of the content of all files matching the space-separated list of patterns on the same line after the "@". On "store" action, if --hint is not provided, the hints are derived from the previous "load" action.',
     )
     parser.add_argument(
         "--exclude",
         type=str,
         default=[],
         action="append",
-        help="exclude pattern(s) for rsync",
+        help="Exclude pattern(s) for rsync.",
     )
     parser.add_argument(
         "--layer",
         type=str,
         default=[],
         action="append",
-        help="include pattern(s) for rsync; if set, only the matching files will be transferred; empty directories will be ignored; deletion will be turned off on load",
+        help="Include pattern(s) for rsync. If set, only the matching files will be transferred. Empty directories will be ignored. Deletion will be turned off on load.",
     )
     parser.add_argument(
         "--verbose",
         default=False,
         action="store_true",
-        help="if set, prints the list of transferred files",
+        help="If set, prints the list of transferred files.",
     )
     args = parser.parse_intermixed_args()
 
@@ -133,7 +133,12 @@ def main():
     )
     slot_ids: list[str] = " ".join(args.slot_id).split()
     local_dir: str = re.sub(r"/+$", "", args.local_dir)
-    hints: list[str] = [hint for arg in args.hint for hint in expand_hint_arg(arg=arg)]
+    hints: list[str] = [
+        hint
+        for arg in "\n".join(args.hint).splitlines()
+        if arg.strip()
+        for hint in expand_hint_arg(arg=arg.strip())
+    ]
     exclude: list[str] = [
         line for line in "\n".join(args.exclude).splitlines() if line.strip()
     ]

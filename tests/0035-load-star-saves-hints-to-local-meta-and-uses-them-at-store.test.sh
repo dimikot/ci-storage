@@ -10,6 +10,7 @@ grep -qF "hints=aaa" "$LOCAL_META_FILE"
 
 ci-storage \
   --slot-id=myslot1 \
+  --hint="" \
   store
 
 grep -qF "hints=aaa" "$STORAGE_DIR/myslot1/.ci-storage.meta"

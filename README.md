@@ -48,7 +48,7 @@ ones, so rsync can run efficiently.
     # Required.
     action: ''
 
-    # Storage host in the format [user@]host[:port]; it must allow password-free
+    # Storage host in the format [user@]host[:port]. It must allow password-free
     # SSH key based access.
     # Default: the content of ~/ci-storage-host file.
     storage-host: ''
@@ -64,7 +64,7 @@ ones, so rsync can run efficiently.
     # Default: 14400 (4 hours).
     storage-max-age-sec: ''
 
-    # Id of the slot to store to or load from; use "*" to load a smart-random
+    # Id of the slot to store to or load from. Use "*" to load a smart-random
     # slot (e.g. most recent or best in terms of layer compatibility) and skip
     # if it does not exist.
     # Default: $GITHUB_RUN_ID (which is friendly to "Re-run failed jobs").
@@ -77,6 +77,15 @@ ones, so rsync can run efficiently.
     # from the action directory, but from /usr/bin/ci-storage.
     # Default: "." (current work directory).
     local-dir: ''
+
+    # Optional hints of the CI run to let slot-id="*" specifier find the best
+    # slot in the storage to load from. The leftmost matching hints have higher
+    # priority. If a line in multi-line hint starts with "@", then it expands
+    # to a digest of the content of all files matching the space-separated list
+    # of patterns on the same line after the "@". On "store" action, if --hint
+    # is not provided, the hints are derived from the previous "load" action.
+    # Default: empty.
+    hint: ''
 
     # Newline separated exclude pattern(s) for rsync.
     # Default: empty.
