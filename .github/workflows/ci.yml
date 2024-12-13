@@ -44,6 +44,10 @@ jobs:
           action: store
           storage-dir: ~/storage-dir
           sudo: false
+          hint: |
+            aaa
+            @dummy.txt
+            bbb
           run-before: |
             set -ex
             echo "run-before" > run-before.txt
@@ -68,6 +72,7 @@ jobs:
         with:
           action: load
           storage-dir: ~/storage-dir
+          hint: aaa
       - name: Check that dummy.txt and run-before.txt were restored
         run: |
           set -e

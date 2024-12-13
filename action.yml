@@ -22,6 +22,9 @@ inputs:
   local-dir:
     description: 'Local directory path to store from or load to. The value namespaces the data stored, so different local-dir values correspond to different storages. If the owner of the directory is different from the current user, then ci-storage tool is run with sudo, and the binary is used not from the action directory, but from /usr/bin/ci-storage. Default: "." (current work directory).'
     required: false
+  hint:
+    description: 'Optional hints of the CI run to let slot-id="*" specifier find the best slot in the storage to load from. The leftmost matching hints have higher priority. If a line in multi-line hint starts with "@", then it expands to a digest of the content of all files matching the space-separated list of patterns on the same line after the "@". On "store" action, if --hint is not provided, the hints are derived from the previous "load" action. Default: empty.'
+    required: false
   exclude:
     description: "Newline separated exclude pattern(s) for rsync. Default: empty."
     required: false
@@ -57,6 +60,7 @@ runs:
         storage_max_age_sec="${{ inputs.storage-max-age-sec || '' }}"
         slot_id="${{ inputs.slot-id }}"
         local_dir="${{ inputs.local-dir || '.' }}"
+        hint="${{ inputs.hint || '' }}"
         exclude="${{ inputs.exclude || '' }}"
         layer_name="${{ inputs.layer-name || '' }}"
         layer_include="${{ inputs.layer-include || '' }}"
@@ -101,6 +105,7 @@ runs:
           --storage-max-age-sec="$storage_max_age_sec"
           --slot-id="$slot_id"
           --local-dir="$local_dir"
+          --hint="$hint"
           --exclude="$exclude"
           --layer="$layer_include"
           $verbose
