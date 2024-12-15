@@ -60,9 +60,16 @@ ones, so rsync can run efficiently.
     # Default: /mnt
     storage-dir: ''
 
-    # Remove slots created earlier than this many seconds ago.
+    # Remove slots created earlier than this many seconds ago. The exception is
+    # the newest slot (it's always kept), and also up to --storage-keep-hint-slots
+    # slots related to unique hints.
     # Default: 14400 (4 hours).
     storage-max-age-sec: ''
+
+    # Defines the number of unique hints, for which ci-storage will keep at
+    # least one newest slot, even if is past --storage-max-age-sec.
+    # Default: 5.
+    storage-keep-hint-slots: ''
 
     # Id of the slot to store to or load from. Use "*" to load a smart-random
     # slot (e.g. most recent or best in terms of layer compatibility) and skip
