@@ -17,6 +17,7 @@ import typing
 
 STORAGE_MAX_AGE_SEC_DEFAULT = 3600
 STORAGE_MAX_AGE_SEC_BAK = 60
+STORAGE_KEEP_HINT_SLOTS_DEFAULT = 5
 STORAGE_DIR_DEFAULT = "~/ci-storage"
 META_FILE = ".ci-storage.meta"
 EMPTY_DIR = ".ci-storage.empty-dir"
@@ -76,7 +77,14 @@ def main():
         type=str,
         default=str(STORAGE_MAX_AGE_SEC_DEFAULT),
         required=False,
-        help="Remove slots created earlier than this many seconds ago.",
+        help="Remove slots created earlier than this many seconds ago. The exception is the newest slot (it's always kept), and also up to --storage-keep-hint-slots slots related to unique hints.",
+    )
+    parser.add_argument(
+        "--storage-keep-hint-slots",
+        type=str,
+        default=str(STORAGE_KEEP_HINT_SLOTS_DEFAULT),
+        required=False,
+        help="Defines the number of unique hints, for which ci-storage will keep at least one newest slot, even if is past --storage-max-age-sec.",
     )
     parser.add_argument(
         "--slot-id",
@@ -131,6 +139,9 @@ def main():
     storage_max_age_sec: int = int(
         args.storage_max_age_sec or str(STORAGE_MAX_AGE_SEC_DEFAULT)
     )
+    storage_keep_hint_slots: int = int(
+        args.storage_keep_hint_slots or str(STORAGE_KEEP_HINT_SLOTS_DEFAULT)
+    )
     slot_ids: list[str] = " ".join(args.slot_id).split()
     local_dir: str = re.sub(r"/+$", "", args.local_dir)
     hints: list[str] = [
@@ -175,6 +186,7 @@ def main():
             storage_host=storage_host,
             storage_dir=storage_dir,
             storage_max_age_sec=storage_max_age_sec,
+            storage_keep_hint_slots=storage_keep_hint_slots,
         )
     elif action == "load":
         if not slot_ids:
@@ -432,12 +444,13 @@ def action_maintenance(
     storage_host: str | None,
     storage_dir: str,
     storage_max_age_sec: int,
+    storage_keep_hint_slots: int,
 ):
     print(
         check_output_script(
             host=storage_host,
             script=SCRIPTS["MAINTENANCE"],
-            args=[storage_dir, str(storage_max_age_sec)],
+            args=[storage_dir, str(storage_max_age_sec), str(storage_keep_hint_slots)],
             indent=True,
         ),
         end="",
@@ -933,7 +946,8 @@ SLOT_INFOS = textwrap.dedent(
                         age_sec => time() - $inode_ctime,
                         dir => $dir,
                         meta => $meta,
-                        is_garbage => $slot_id =~ /\./ ? 1 : 0,
+                        meta_hints => $meta =~ /^hints=(.*)/m ? [grep(/./s, split(/\s+/s, $1))] : [],
+                        is_tmp_or_bak => $slot_id =~ /\./ ? 1 : 0,
                         is_bak => $slot_id =~ /\.bak\.\d+$/s ? 1 : 0,
                     };
                 } else {
@@ -969,7 +983,7 @@ SCRIPTS = {
         }
         %(SLOT_INFOS)s
         my @slot_infos =
-            grep { !$_->{is_garbage} }
+            grep { !$_->{is_tmp_or_bak} }
             slot_infos($storage_dir);
         if (@slot_infos) {
             my $newest_dir = $slot_infos[0]{dir};
@@ -1028,6 +1042,7 @@ SCRIPTS = {
         *STDERR->autoflush(1);
         my $storage_dir = $ARGV[0] or die("storage_dir argument required\n");
         my $storage_max_age_sec = $ARGV[1] or die("storage_max_age_sec argument required\n");
+        my $storage_keep_hint_slots = $ARGV[2] or die("storage_keep_hint_slots argument required\n");
         length($storage_dir) >= 3 or die("storage_dir is suspiciously short\n");
         my $lock_file = "$storage_dir/maintenance.lock";
         open(my $lock, ">>", $lock_file) or die("open $lock_file: $!\n");
@@ -1037,14 +1052,34 @@ SCRIPTS = {
         }
         %(SLOT_INFOS)s
         my @slot_infos = slot_infos($storage_dir);
-        my $slot_dir_newest = (map { $_->{dir} } grep { !$_->{is_garbage} } @slot_infos)[0];
+        my $slot_dir_newest = (map { $_->{dir} } grep { !$_->{is_tmp_or_bak} } @slot_infos)[0];
+        my %%slot_dir_newest_per_hint =
+            map { $_->{meta_hints}[0], $_->{dir} }
+            grep { !$_->{is_tmp_or_bak} && defined($_->{meta_hints}[0]) }
+            reverse(@slot_infos);
         my @rm_dirs = ();
+        my $kept_per_hint_slots = 0;
         foreach my $info (@slot_infos) {
             my $dir = $info->{dir};
             my $age_sec = $info->{age_sec};
             my $is_bak = $info->{is_bak};
-            if (defined($slot_dir_newest) && $dir eq $slot_dir_newest) {
-                # Never delete the latest slot, even if it is old.
+            my $hint = $info->{meta_hints}[0];
+            my $suffix = (defined($hint) ? "hint=$hint, " : "") . "age=${age_sec}s";
+            if (
+                defined($slot_dir_newest) &&
+                $dir eq $slot_dir_newest
+            ) {
+                print("keeping $dir, the newest slot overall ($suffix)\n");
+                next;
+            }
+            if (
+                defined($hint) &&
+                defined($slot_dir_newest_per_hint{$hint}) &&
+                $dir eq $slot_dir_newest_per_hint{$hint} &&
+                $kept_per_hint_slots < $storage_keep_hint_slots
+            ) {
+                print("keeping $dir, the newest slot with this hint ($suffix)\n");
+                $kept_per_hint_slots++;
                 next;
             }
             if (
@@ -1052,7 +1087,9 @@ SCRIPTS = {
                 $is_bak && $age_sec > %(STORAGE_MAX_AGE_SEC_BAK)d
             ) {
                 push(@rm_dirs, $dir);
-                print("will remove $dir (age: $age_sec sec) in background\n");
+                print("will remove $dir in background ($suffix)\n");
+            } else {
+                print("keeping $dir, new enough ($suffix)\n");
             }
         }
         if (!@rm_dirs) {

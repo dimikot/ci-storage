@@ -14,7 +14,10 @@ inputs:
     description: "Storage directory on the remote host. Notice that, when building the final directory on the storage host, owner and repo are always appended, so the path will be {storage-dir}/{owner}/{repo}/{slug(local-dir)} or {storage-dir}/{owner}/{repo}/{slug(local-dir)}.{layer-name}. Default: /mnt"
     required: false
   storage-max-age-sec:
-    description: "Remove slots created earlier than this many seconds ago. Default: 14400 (4 hours)."
+    description: "Remove slots created earlier than this many seconds ago. The exception is the newest slot (it's always kept), and also up to --storage-keep-hint-slots slots related to unique hints. Default: 3600 (1 hour)."
+    required: false
+  storage-keep-hint-slots:
+    description: "Defines the number of unique hints, for which ci-storage will keep at least one newest slot, even if is past --storage-max-age-sec. Default: 5."
     required: false
   slot-id:
     description: 'Id of the slot to store to or load from; use "*" to load a smart-random slot (e.g. most recent or best in terms of layer compatibility) and skip if it does not exist. Default: $GITHUB_RUN_ID (which is friendly to "Re-run failed jobs").'
@@ -58,6 +61,7 @@ runs:
         storage_host="${{ inputs.storage-host || '' }}"
         storage_dir="${{ inputs.storage-dir || '/mnt' }}/${{ github.repository }}"
         storage_max_age_sec="${{ inputs.storage-max-age-sec || '' }}"
+        storage_keep_hint_slots="${{ inputs.storage-keep-hint-slots || '' }}"
         slot_id="${{ inputs.slot-id }}"
         local_dir="${{ inputs.local-dir || '.' }}"
         hint="${{ inputs.hint || '' }}"
@@ -103,6 +107,7 @@ runs:
           --storage-host="$storage_host"
           --storage-dir="$storage_dir"
           --storage-max-age-sec="$storage_max_age_sec"
+          --storage-keep-hint-slots="$storage_keep_hint_slots"
           --slot-id="$slot_id"
           --local-dir="$local_dir"
           --hint="$hint"
