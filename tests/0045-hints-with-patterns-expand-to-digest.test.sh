@@ -8,7 +8,7 @@ echo "c" > "$LOCAL_DIR/file-c"
 ci-storage \
   --slot-id=myslot1 \
   --hint="aaa bbb" \
-  --hint="@$LOCAL_DIR/file-new-* $LOCAL_DIR/file-c $LOCAL_DIR/file-absent?" \
+  --hint="@$LOCAL_DIR/file-new-*   $LOCAL_DIR/file-new-b $LOCAL_DIR/file-c $LOCAL_DIR/file-absent? $LOCAL_DIR/file-c" \
   --hint=" ccc " \
   store
 

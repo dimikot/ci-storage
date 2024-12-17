@@ -676,14 +676,16 @@ def expand_hint_arg(*, arg: str) -> list[str]:
         item_patterns = [item for item in items if is_wildcard(item)]
         item_files = [item for item in items if not is_wildcard(item)]
         files = sorted(
-            [
-                *item_files,
-                *[
-                    file
-                    for pattern in item_patterns
-                    for file in glob.glob(pattern, recursive=True)
-                ],
-            ]
+            set(
+                [
+                    *item_files,
+                    *[
+                        file
+                        for pattern in item_patterns
+                        for file in glob.glob(pattern, recursive=True)
+                    ],
+                ]
+            )
         )
         print(cmd_to_debug_prompt(["sha256sum", *files]))
         m = hashlib.sha256()
