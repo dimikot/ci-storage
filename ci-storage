@@ -257,9 +257,10 @@ def action_load(
                     # Write hints, so next time we call "store" action, we don't
                     # have to pass them again, the hints will be derived from
                     # the "load" action.
-                    meta = SlotMeta.read_from(local_dir=local_dir)
-                    meta.hints = hints
-                    meta.write_to(local_dir=local_dir)
+                    if hints:
+                        meta = SlotMeta.read_from(local_dir=local_dir)
+                        meta.hints = hints
+                        meta.write_to(local_dir=local_dir)
                 return
             elif not layer:
                 slot_id = infer_best_slot_to_load_full_from(
@@ -309,10 +310,14 @@ def action_load(
 
     if not layer:
         slot_info = slot_infos[slot_id]
-        # We update full_snapshot_history to remember the actual slot "*" has
-        # just loaded from, to allow the next "store" action better choose the
-        # "dedupping" slot with --link-dest.
+        # We update full_snapshot_history to remember the actual slot "*" we
+        # have just loaded from, to allow the next "store" action better choose
+        # the "dedupping" slot with --link-dest.
         slot_info.meta.full_snapshot_history.insert(0, slot_id)
+        # Write hints, so next time we call "store" action, we don't have to
+        # pass them again, the hints will be derived from the "load" action.
+        if hints:
+            slot_info.meta.hints = hints
         slot_info.meta.write_to(local_dir=local_dir)
 
 
@@ -429,6 +434,7 @@ def action_clean(
             ],
             print_elapsed=True,
         )
+        SlotMeta().write_to(local_dir=local_dir)
     finally:
         try:
             os.rmdir(empty_dir)
