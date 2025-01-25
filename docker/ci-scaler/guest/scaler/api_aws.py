@@ -20,6 +20,7 @@ class AsgDescription:
     desired_capacity: int
     min_size: int
     max_size: int
+    instance_ids: list[str]
 
 
 @functools.lru_cache(maxsize=None)
@@ -115,6 +116,7 @@ def aws_autoscaling_describe_auto_scaling_group(
         desired_capacity=asg["DesiredCapacity"],
         min_size=asg["MinSize"],
         max_size=asg["MaxSize"],
+        instance_ids=[instance["InstanceId"] for instance in asg["Instances"]],
     )
 
 

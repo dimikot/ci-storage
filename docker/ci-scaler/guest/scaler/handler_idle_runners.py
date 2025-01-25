@@ -6,6 +6,7 @@ from api_aws import (
     aws_autoscaling_terminate_instance,
     aws_region,
 )
+from api_gh import gh_runner_ensure_absent
 from helpers import (
     AsgHandler,
     AsgSpec,
@@ -55,10 +56,33 @@ class HandlerIdleRunners(AsgHandler):
         min_size = asg_description.min_size if asg_description else 1
 
         for runner in old_idle_runners[min_size:]:
-            with logged_result(
-                swallow=True,
-                doing=f"terminating old idle instance {runner.name} in {self.asg_spec}"
-                + (f" {DRY_RUN_MSG}" if not aws_region() else ""),
+            if (
+                asg_description
+                and runner.instance_id() not in asg_description.instance_ids
             ):
-                aws_autoscaling_terminate_instance(instance_id=runner.instance_id())
-                self.terminated_instance_ids[runner.id] = True
+                # This is a weird GitHub bug: sometimes the runner exists and is
+                # idle, but the corresponding instance is NOT in ASG (and not in
+                # AWS) anymore. How could it disappear, and the runner remains
+                # idle for many days? Mystery. So in this case, instead of
+                # trying to delete the disappeared instance from ASG and fail,
+                # we try to remove that sick runner from GitHub.
+                with logged_result(
+                    swallow=True,
+                    doing=f"instance {runner.instance_id()} for old idle runner {runner.name} "
+                    + f"is not in ASG {self.asg_spec} (GitHub bug?), so just removing the runner from GitHub"
+                    + (f" {DRY_RUN_MSG}" if not aws_region() else ""),
+                ):
+                    gh_runner_ensure_absent(
+                        repository=self.asg_spec.repository,
+                        runner_id=runner.id,
+                    )
+                    self.terminated_instance_ids[runner.id] = True
+            else:
+                with logged_result(
+                    swallow=True,
+                    doing=f"terminating instance {runner.instance_id()} for old idle runner {runner.name} "
+                    + f"in {self.asg_spec}"
+                    + (f" {DRY_RUN_MSG}" if not aws_region() else ""),
+                ):
+                    aws_autoscaling_terminate_instance(instance_id=runner.instance_id())
+                    self.terminated_instance_ids[runner.id] = True
