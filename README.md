@@ -2,7 +2,7 @@
 
 # CI Storage
 
-This repository is a combination of several tools which work in unison:
+This repository is a combination of several tools that work in unison:
 
 - [Action: ci-storage](#action-ci-storage). A GitHub action which uses ci-storage command-line tool.
 - [Command-line tool: ci-storage](https://github.com/dimikot/ci-storage/blob/main/ci-storage). The tool itself. It can be used stand-alone too.
@@ -175,14 +175,14 @@ jobs:
 ```
 
 
-## Command-line tool: ci-storage
+## Command-Line Tool: ci-storage
 
 The command-line tool allows to run ci-storage manually.
 
 - [See source code and description](https://github.com/dimikot/ci-storage/blob/main/ci-storage)
 
 
-## Docker image: ci-storage
+## Docker Image: ci-storage
 
 A part of self-hosted runners infra representing the storage for ci-storage tool.
 
@@ -190,7 +190,7 @@ A part of self-hosted runners infra representing the storage for ci-storage tool
 - [See Docker image: dimikot/ci-storage](https://github.com/dimikot/ci-storage/pkgs/container/ci-storage)
 
 
-## Docker image: ci-scaler
+## Docker Image: ci-scaler
 
 A part of self-hosted runners infra which dynamically launches more self-hosted
 runner spot instances when needed, recycles idle resources etc.
@@ -199,7 +199,7 @@ runner spot instances when needed, recycles idle resources etc.
 - [See Docker image: dimikot/ci-scaler](https://github.com/dimikot/ci-storage/pkgs/container/ci-scaler)
 
 
-## Docker image: ci-runner
+## Docker Image: ci-runner
 
 A part of self-hosted runners infra representing GitHub Actions runner.
 

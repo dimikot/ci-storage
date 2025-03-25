@@ -17,7 +17,9 @@ if [[ "$(find . -name "$updated_at_file" -mtime +21)" != "" ]]; then
     aarch64|arm64) arch=linux-arm64 ;;
     *) echo >&2 "unsupported architecture: $arch"; exit 1 ;;
   esac
+  say "Fetching the latest runner version..."
   runner_version=$(curl --silent "https://api.github.com/repos/actions/runner/releases/latest" | jq -r ".tag_name[1:]")
+  say "Updating runner to \"$runner_version\" (previously updated on $(cat $updated_at_file))..."
   curl --no-progress-meter -L "https://github.com/actions/runner/releases/download/v$runner_version/actions-runner-$arch-$runner_version.tar.gz" | tar xz
   say "Updated runner to $runner_version (previously updated on $(cat $updated_at_file))."
   date > $updated_at_file
