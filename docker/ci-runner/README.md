@@ -70,13 +70,15 @@ services:
       - CI_STORAGE_HOST=127.0.0.1:10022
       - BTIME
     volumes:
-      # ~/.ssh/ci-storage must exist on the docker host to access ci-storage
-      # remote container at $FORWARD_HOST
+      # ~/.ssh/ci-storage private key file must exist on the docker host to
+      # access ci-storage remote container at $FORWARD_HOST.
       - ~/.ssh/ci-storage:/run/secrets/CI_STORAGE_PRIVATE_KEY
+      # This volume will survive the container restart.
+      - ~/.ci-storage-cache:/var/cache/ci-storage
     tmpfs:
       # Having work directory on tmpfs makes latency predictable, which is very
       # handy while debugging the CI perf bottlenecks.
-      - /mnt:exec
+      - /mnt:exec,size=80%
 ```
 
 Example for your custom Dockerfile mentioned above. This Dockerfile allows to

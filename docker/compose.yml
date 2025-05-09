@@ -63,11 +63,15 @@ services:
       - DEBUG_SHUTDOWN_DELAY_SEC=1
     secrets:
       - CI_STORAGE_PRIVATE_KEY
+    volumes:
+      - ci-storage-cache:/var/cache/ci-storage
     tmpfs:
       - /mnt:exec
 
 volumes:
   ci-storage-mnt:
+    external: false
+  ci-storage-cache:
     external: false
 
 secrets:
