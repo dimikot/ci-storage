@@ -17,12 +17,29 @@ if [[ "$(find . -name "$updated_at_file" -mtime +21)" != "" ]]; then
     aarch64|arm64) arch=linux-arm64 ;;
     *) echo >&2 "unsupported architecture: $arch"; exit 1 ;;
   esac
-  say "Fetching the latest runner version..."
+
+  say "Getting the latest runner version (previously updated at $(cat $updated_at_file))..."
   runner_version=$(curl --silent "https://api.github.com/repos/actions/runner/releases/latest" | jq -r ".tag_name[1:]")
-  say "Updating runner to \"$runner_version\" (previously updated on $(cat $updated_at_file))..."
-  curl --no-progress-meter -L "https://github.com/actions/runner/releases/download/v$runner_version/actions-runner-$arch-$runner_version.tar.gz" | tar xz
-  say "Updated runner to $runner_version (previously updated on $(cat $updated_at_file))."
-  date > $updated_at_file
+
+  file="actions-runner-$arch-$runner_version.tar.gz"
+  path="$CACHE_DIR/$file"
+  url="https://github.com/actions/runner/releases/download/v$runner_version/$file"
+
+  say "Content of $CACHE_DIR:"
+  ls -la "$CACHE_DIR"
+
+  if [[ ! -r "$path" ]]; then
+    say "Downloading $url to $CACHE_DIR..."
+    curl --no-progress-meter -L "$url" > "$path.tmp"
+    mv -f "$path.tmp" "$path"
+  else
+    say "Using previously downloaded $path"
+  fi
+
+  tar xzf "$path"
+  date > "$updated_at_file"
+
+  say "Updated runner to $runner_version from $path"
 else
-  say "Runner is new enough (last updated on $(cat $updated_at_file)), skipping the update."
+  say "Runner is new enough (previously updated at $(cat $updated_at_file)), skipping the update."
 fi

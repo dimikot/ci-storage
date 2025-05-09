@@ -248,7 +248,7 @@ def action_load(
                 if layer:
                     print(f"{prefix} {storage} has no slots, so exiting with a no-op")
                 else:
-                    print(f"{prefix} {storage} has no slots, so cleaning f{local_dir}")
+                    print(f"{prefix} {storage} has no slots, so cleaning {local_dir}")
                     action_clean(
                         local_dir=local_dir,
                         exclude=exclude,
