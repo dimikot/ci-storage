@@ -14,7 +14,11 @@ from api_gh import (
     gh_webhook_ensure_exists,
     gh_webhook_ping,
 )
-from api_aws import DRY_RUN_MSG, aws_autoscaling_increment_desired_capacity
+from api_aws import (
+    DRY_RUN_MSG,
+    aws_autoscaling_increment_desired_capacity,
+    aws_cloudwatch_put_metric_data,
+)
 from helpers import (
     ExpiringDict,
     PostJsonHttpRequestHandler,
@@ -22,11 +26,13 @@ from helpers import (
     log,
     logged_result,
 )
-from typing import Any
+from typing import Any, Literal, cast
 
 
 DUPLICATED_EVENTS_TTL = 3600
+JOB_TIMING_TTL = 7200  # 2 hours to track job timing data
 WORKFLOW_RUN_EVENT = "workflow_run"
+WORKFLOW_JOB_EVENT = "workflow_job"
 IGNORE_KEYS = [
     "zen",
     "hook_id",
@@ -52,6 +58,15 @@ class ServiceAction:
     iteration: int = 0
 
 
+@dataclasses.dataclass
+class JobTiming:
+    job_id: int
+    queued_at: float | None = None
+    started_at: float | None = None
+    completed_at: float | None = None
+    bumped: set[str] = dataclasses.field(default_factory=set)
+
+
 class HandlerWebhooks:
     def __init__(self, *, domain: str, asg_specs: list[AsgSpec]):
         self.domain = domain
@@ -59,9 +74,10 @@ class HandlerWebhooks:
         self.webhooks: dict[str, Webhook] = {}
         self.service_action = ServiceAction(prev_at=int(time.time()))
         self.secret = gh_get_webhook_secret()
-        self.duplicated_events = ExpiringDict[tuple[int, int], float](
+        self.duplicated_events = ExpiringDict[tuple[int, str], float](
             ttl=DUPLICATED_EVENTS_TTL
         )
+        self.job_timings = ExpiringDict[int, JobTiming](ttl=JOB_TIMING_TTL)
         this = self
 
         class RequestHandler(PostJsonHttpRequestHandler):
@@ -80,7 +96,7 @@ class HandlerWebhooks:
                     repository=repository,
                     url=url,
                     secret=self.secret,
-                    events=[WORKFLOW_RUN_EVENT],
+                    events=[WORKFLOW_RUN_EVENT, WORKFLOW_JOB_EVENT],
                 )
                 self.webhooks[repository] = Webhook(url=url, last_delivery_at=None)
         return self
@@ -116,13 +132,59 @@ class HandlerWebhooks:
         data_bytes: bytes,
     ):
         action = data.get("action")
-        event_payload = data.get(WORKFLOW_RUN_EVENT)
-        name = event_payload.get("name") if event_payload else None
-        repository: str | None = data.get("repository", {}).get("full_name", None)
+        run_payload = data.get(WORKFLOW_RUN_EVENT)
+        job_payload = data.get(WORKFLOW_JOB_EVENT)
 
+        # For local debugging only! Allows to simulate a webhook with just
+        # querying an URL that includes the repo name and label:
+        # - /workflow_run/owner/repo/label
+        # - /workflow_job/owner/repo/label/{queued|in_progress|completed}/job_id
+        if (
+            handler.client_address[0] == "127.0.0.1"
+            and not action
+            and not run_payload
+            and not job_payload
+        ):
+            if match := re.match(
+                rf"^/{WORKFLOW_RUN_EVENT}/([^/]+/[^/]+)/([^/]+)/?$",
+                handler.path,
+            ):
+                return self._handle_workflow_run_in_progress(
+                    handler=handler,
+                    repository=match.group(1),
+                    labels={match.group(2): 1},
+                )
+            elif match := re.match(
+                rf"^/{WORKFLOW_JOB_EVENT}/([^/]+/[^/]+)/([^/]+)/([^/]+)/([^/]+)/?$",
+                handler.path,
+            ):
+                return self._handle_workflow_job_timing(
+                    handler=handler,
+                    repository=match.group(1),
+                    labels={match.group(2): 1},
+                    action=cast(Any, match.group(3)),
+                    job_id=int(match.group(4)),
+                    name=None,
+                )
+            else:
+                return handler.send_error(
+                    404,
+                    f"When accessing from localhost for debugging, the path must look like: "
+                    + f"/{WORKFLOW_RUN_EVENT}/owner/repo/label"
+                    + f" or "
+                    + f"/{WORKFLOW_JOB_EVENT}/owner/repo/label/{'{queued|in_progress|completed}'}/job_id"
+                    + f", but got {handler.path}",
+                )
+
+        repository: str | None = data.get("repository", {}).get("full_name", None)
         if repository in self.webhooks:
             self.webhooks[repository].last_delivery_at = int(time.time())
 
+        name = (
+            str(run_payload.get("name"))
+            if run_payload
+            else str(job_payload.get("name")) if job_payload else None
+        )
         keys = [k for k in data.keys() if k not in IGNORE_KEYS]
         if keys:
             handler.log_suffix = (
@@ -137,24 +199,6 @@ class HandlerWebhooks:
         if not repository:
             return handler.send_json(202, message="ignoring event with no repository")
 
-        if handler.client_address[0] == "127.0.0.1" and not event_payload:
-            match = re.match(
-                rf"^/{WORKFLOW_RUN_EVENT}/([^/]+/[^/]+)/([^/]+)/?$",
-                handler.path,
-            )
-            if match:
-                return self._handle_workflow_run_in_progress(
-                    handler=handler,
-                    repository=match.group(1),
-                    labels={match.group(2): 1},
-                )
-            else:
-                return handler.send_error(
-                    404,
-                    f"When accessing from localhost for debugging, the path must "
-                    + f"look like: /{WORKFLOW_RUN_EVENT}/{'{owner}/{repo}/{label}'}, but got {handler.path}",
-                )
-
         assert self.secret
         error = verify_signature(
             secret=self.secret,
@@ -164,24 +208,23 @@ class HandlerWebhooks:
         if error:
             return handler.send_error(403, error)
 
-        if event_payload:
+        if run_payload:
             if action != "requested" and action != "in_progress":
                 return handler.send_json(
                     202,
                     message='ignoring action != ["requested", "in_progress"]',
                 )
 
-            event_key = (int(event_payload["id"]), int(event_payload["run_attempt"]))
+            event_key = (int(run_payload["id"]), str(run_payload["run_attempt"]))
             processed_at = self.duplicated_events.get(event_key)
             if processed_at:
                 return handler.send_json(
                     202,
-                    message=f"this event has already been processed at {time.ctime(processed_at)}",
+                    message=f"ignoring event that has already been processed at {time.ctime(processed_at)}",
                 )
 
-            head_sha = str(event_payload["head_sha"])
-            path = str(event_payload["path"])
-
+            head_sha = str(run_payload["head_sha"])
+            path = str(run_payload["path"])
             message = f"{repository}: downloading {os.path.basename(path)} and parsing jobs list..."
             try:
                 workflow = gh_fetch_workflow(
@@ -194,12 +237,42 @@ class HandlerWebhooks:
             except Exception as e:
                 return handler.send_error(500, f"{message} failed: {e}")
 
-            self._handle_workflow_run_in_progress(
+            self.duplicated_events[event_key] = time.time()
+            return self._handle_workflow_run_in_progress(
                 handler=handler,
                 repository=repository,
                 labels=labels,
             )
+
+        if job_payload:
+            if action != "queued" and action != "in_progress" and action != "completed":
+                return handler.send_json(
+                    202,
+                    message='ignoring action != ["queued", "in_progress", "completed"]',
+                )
+
+            event_key = (int(job_payload["id"]), action)
+            processed_at = self.duplicated_events.get(event_key)
+            if processed_at:
+                return handler.send_json(
+                    202,
+                    message=f"ignoring event that has already been processed at {time.ctime(processed_at)}",
+                )
+
             self.duplicated_events[event_key] = time.time()
+            return self._handle_workflow_job_timing(
+                handler=handler,
+                repository=repository,
+                labels={label: 1 for label in job_payload["labels"]},
+                action=action,
+                job_id=int(job_payload["id"]),
+                name=name,
+            )
+
+        return handler.send_json(
+            202,
+            message=f"ignoring event with no {WORKFLOW_RUN_EVENT} and {WORKFLOW_JOB_EVENT}",
+        )
 
     def _handle_workflow_run_in_progress(
         self,
@@ -218,19 +291,103 @@ class HandlerWebhooks:
                     inc=inc,
                 )
                 has_aws = has_aws or res
-                messages.append(f"{asg_spec.label}:+{inc}")
-        if messages:
-            return handler.send_json(
-                200,
-                message=f"{repository} desired capacity: {', '.join(messages)}"
-                + (f" {DRY_RUN_MSG}" if not has_aws else ""),
-            )
-        else:
+                messages.append(f"{asg_spec}:+{inc}")
+
+        if not messages:
             # Most likely, it's a GitHub-hosted action runner's label.
             return handler.send_json(
                 202,
-                message=f"Ignored: no matching auto-scaling group(s) found for repository {repository} and labels {[*labels.keys()]}",
+                message=f"ignoring event, since no matching auto-scaling group(s) found for repository {repository} and labels {[*labels.keys()]}",
             )
+
+        return handler.send_json(
+            200,
+            message=f"updated desired capacity: {', '.join(messages)}"
+            + (f" {DRY_RUN_MSG}" if not has_aws else ""),
+        )
+
+    def _handle_workflow_job_timing(
+        self,
+        *,
+        handler: PostJsonHttpRequestHandler,
+        repository: str,
+        labels: dict[str, int],
+        action: Literal["queued", "in_progress", "completed"],
+        job_id: int,
+        name: str | None,
+    ):
+        asg_spec: AsgSpec | None = None
+        for asg in self.asg_specs:
+            if asg.repository == repository and asg.label in labels:
+                asg_spec = asg
+                break
+        if not asg_spec:
+            return handler.send_json(
+                202,
+                message=f"ignoring event, since no matching auto-scaling group(s) found for repository {repository} and labels {[*labels.keys()]}",
+            )
+
+        timing = self.job_timings.get(job_id) or JobTiming(job_id=job_id)
+        self.job_timings[job_id] = timing
+
+        now = time.time()
+        if action == "queued":
+            timing.queued_at = now
+        elif action == "in_progress":
+            timing.started_at = now
+        elif action == "completed":
+            timing.completed_at = now
+
+        metrics: dict[str, int] = {}
+        if timing.started_at and timing.queued_at:
+            metrics["JobPickUpTimeSec"] = int(timing.started_at - timing.queued_at)
+        if timing.completed_at and timing.started_at:
+            metrics["JobExecutionTimeSec"] = int(
+                timing.completed_at - timing.started_at
+            )
+        if timing.completed_at and timing.queued_at:
+            metrics["JobCompleteTimeSec"] = int(timing.completed_at - timing.queued_at)
+
+        for metric in timing.bumped:
+            metrics.pop(metric, None)
+        timing.bumped.update(metrics.keys())
+
+        if metrics:
+            job_name = (
+                re.sub(
+                    r"^_+|_+$",  # e.g. "_some_text_" -> "some_text"
+                    "",
+                    re.sub(
+                        r"[^-_a-zA-Z0-9]+",  # e.g. "run lint" -> "run_lint"
+                        "_",
+                        re.sub(
+                            r"\s+\d+$",  # e.g. "test 6" -> "test x"
+                            " x",
+                            name.lower(),  # e.g. "Abc" -> "abc"
+                        ),
+                    ),
+                )
+                if name
+                else None
+            )
+            has_aws = aws_cloudwatch_put_metric_data(
+                metrics=metrics,
+                dimensions={
+                    "GH_REPOSITORY": asg_spec.repository,
+                    "GH_LABEL": asg_spec.label,
+                    **({"GH_JOB_NAME": job_name} if job_name else {}),
+                },
+            )
+            log(
+                f"{asg_spec}: job_id={job_id} job_name={job_name}: "
+                + " ".join(f"{k}={v}" for k, v in metrics.items())
+                + (f" {DRY_RUN_MSG}" if not has_aws else "")
+            )
+
+        return handler.send_json(
+            200,
+            message=f"processed event for job_id={job_id}: {asg_spec}",
+        )
 
 
 def verify_signature(

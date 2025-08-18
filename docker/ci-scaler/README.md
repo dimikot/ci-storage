@@ -24,11 +24,11 @@ Example for docker compose:
 
 ```yml
 services:
-      ...   
+   ...
    ci-scaler:
       image: ghcr.io/dimikot/ci-scaler:latest
       ports:
-         - 18088:8088/tcp
+        - 18088:8088/tcp
       environment:
         - GH_TOKEN
         - ASGS
@@ -38,10 +38,22 @@ services:
 
 One ci-scaler container may serve multiple GitHub repositories.
 
+## Debugging
+
 To enter the container, run e.g.:
 
 ```
+cd ..
 docker compose exec ci-scaler bash -l
+```
+
+From there, to manually send webhook simulation requests to ci-scaler:
+
+```
+curl -XPOST http://localhost:8088/workflow_run/dimikot/ci-storage/ci-storage-dev
+curl -XPOST http://localhost:8088/workflow_job/dimikot/ci-storage/ci-storage-dev/queued/42
+curl -XPOST http://localhost:8088/workflow_job/dimikot/ci-storage/ci-storage-dev/in_progress/42
+curl -XPOST http://localhost:8088/workflow_job/dimikot/ci-storage/ci-storage-dev/completed/42
 ```
 
 See also https://github.com/dimikot/ci-storage

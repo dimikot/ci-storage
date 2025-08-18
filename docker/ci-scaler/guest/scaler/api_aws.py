@@ -44,6 +44,8 @@ def aws_metadata_curl(path: str) -> str | None:
                 timeout=METADATA_TIMEOUT_SEC,
             ) as response:
                 return response.read().decode("utf-8")
+    except TimeoutError:
+        return None
     except urllib.error.URLError:
         return None
 
