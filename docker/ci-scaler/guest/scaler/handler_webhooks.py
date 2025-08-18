@@ -30,7 +30,8 @@ from typing import Any, Literal, cast
 
 
 DUPLICATED_EVENTS_TTL = 3600
-JOB_TIMING_TTL = 7200  # 2 hours to track job timing data
+JOB_TIMING_TTL = 3600 * 2
+WORKFLOW_TTL = 60 * 5
 WORKFLOW_RUN_EVENT = "workflow_run"
 WORKFLOW_JOB_EVENT = "workflow_job"
 IGNORE_KEYS = [
@@ -78,6 +79,7 @@ class HandlerWebhooks:
             ttl=DUPLICATED_EVENTS_TTL
         )
         self.job_timings = ExpiringDict[int, JobTiming](ttl=JOB_TIMING_TTL)
+        self.workflows = ExpiringDict[str, dict[str, Any]](ttl=WORKFLOW_TTL)
         this = self
 
         class RequestHandler(PostJsonHttpRequestHandler):
@@ -225,15 +227,24 @@ class HandlerWebhooks:
 
             head_sha = str(run_payload["head_sha"])
             path = str(run_payload["path"])
-            message = f"{repository}: downloading {os.path.basename(path)} and parsing jobs list..."
+            message = f"{repository}{event_key}: downloading {os.path.basename(path)} and parsing jobs list"
             try:
-                workflow = gh_fetch_workflow(
-                    repository=repository,
-                    sha=head_sha,
-                    path=path,
-                )
+                cache_key = f"{repository}:{path}"
+                workflow = self.workflows.get(cache_key, None)
+                if not workflow:
+                    workflow = gh_fetch_workflow(
+                        repository=repository,
+                        sha=head_sha,
+                        path=path,
+                    )
+                    self.workflows[cache_key] = workflow
+                else:
+                    message += f" (cached)"
                 labels = gh_predict_workflow_labels(workflow=workflow)
-                log(f"{message} " + " ".join([f"{k}:+{v}" for k, v in labels.items()]))
+                log(
+                    f"{message}... "
+                    + " ".join([f"{k}:+{v}" for k, v in labels.items()])
+                )
             except Exception as e:
                 return handler.send_error(500, f"{message} failed: {e}")
 

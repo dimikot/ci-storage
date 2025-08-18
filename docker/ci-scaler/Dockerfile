@@ -11,7 +11,11 @@ ENV DEBIAN_FRONTEND=noninteractive
 RUN true \
     && apt-get update -y \
     && apt-get install -y --no-install-recommends \
-      awscli jq gh rsync python3 python3-yaml rsyslog systemctl tzdata gosu less mc git curl wget pv psmisc unzip vim nano telnet net-tools apt-transport-https ca-certificates locales gnupg lsb-release \
+      awscli jq rsync python3 python3-yaml rsyslog systemctl tzdata gosu less mc git curl wget pv psmisc unzip vim nano telnet net-tools apt-transport-https ca-certificates locales gnupg lsb-release \
+    && curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg | gpg --dearmor -o /usr/share/keyrings/githubcli-archive-keyring.gpg \
+    && echo "deb [signed-by=/usr/share/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" > /etc/apt/sources.list.d/github-cli.list \
+    && apt-get update -y \
+    && apt-get install -y --no-install-recommends gh \
     && useradd -m guest -s /bin/bash \
     && mkdir ~guest/.ssh && chmod 700 ~guest/.ssh \
     && chown -R guest:guest ~guest

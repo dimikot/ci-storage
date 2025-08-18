@@ -2,8 +2,11 @@ import codecs
 import hashlib
 import json
 import os
+import random
+import shlex
 import subprocess
 import time
+import traceback
 import yaml
 from helpers import Runner, RateLimits, check_output
 from typing import Any, cast
@@ -20,26 +23,35 @@ def gh_api(
     *args: str,
     input: Any | None = None,
 ) -> Any:
-    args = ("-H", "Accept: application/vnd.github.v3+json", *args)
-    res = gh(
+    args = (
         "api",
         *(["--input=-"] if input else []),
+        "-H",
+        "Accept: application/vnd.github.v3+json",
         *args,
-        input=json.dumps(input) if input is not None else None,
     )
-    return json.loads(res.strip()) if res != "" else None
+    res = None
+    try:
+        res = gh(
+            *args,
+            input=json.dumps(input) if input is not None else None,
+        ).strip()
+        return json.loads(res) if res else None
+    except Exception:
+        with open(f"/tmp/gh_api_error.{random.randint(0, 9)}.txt", "w") as f:
+            f.write(f"$ gh {shlex.join(args).strip()}\n")
+            f.write(f"{traceback.format_exc().rstrip()}\n")
+            f.write(f"{res}\n")
+        raise
 
 
 def gh_fetch_runners(
     *,
     repository: str,
 ) -> list[Runner]:
-    res = gh_api(f"repos/{repository}/actions/runners", "--paginate")
-    if not isinstance(res, dict):
-        raise ValueError(f"gh api returned a non-object: {res}")
-    runners = cast(dict[str, Any], res).get("runners")
-    if not isinstance(runners, list):
-        raise ValueError(f'gh api returned a response with no "runners" key: {res}')
+    res = gh_api(f"repos/{repository}/actions/runners", "--paginate", "--slurp")
+    if not isinstance(res, list) or not res:
+        raise ValueError(f"gh api returned a non-list of pages: {res}")
     return [
         Runner(
             id=str(runner["id"]),
@@ -53,7 +65,8 @@ def gh_fetch_runners(
             ],
             loaded_at=int(time.time()),
         )
-        for runner in cast(list[dict[str, Any]], runners)
+        for page in cast(list[dict[str, Any]], res)
+        for runner in cast(list[dict[str, Any]], page["runners"])
     ]
 
 
@@ -114,7 +127,6 @@ def gh_webhook_ensure_absent(
 def gh_webhook_get_id(*, repository: str, url: str) -> str | None:
     ids: list[str] = gh_api(
         f"/repos/{repository}/hooks",
-        "--paginate",
         "--jq",
         f"[.[] | select(.config.url=={json.dumps(url)}) | .id]",
     )
