@@ -1,15 +1,18 @@
 {
   "cSpell.words": [
     "asgs",
+    "autoflush",
     "BTIME",
     "dedup",
     "dedupping",
     "digestmod",
     "elif",
+    "geteuid",
     "hardlink",
     "mtimes",
     "myslot",
     "oneline",
+    "setsid",
     "strerror",
     "tmpfs",
     "topo"

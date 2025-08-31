@@ -956,7 +956,7 @@ SLOT_INFOS = textwrap.dedent(
                         meta => $meta,
                         meta_hints => $meta =~ /^hints=(.*)/m ? [grep(/./s, split(/\s+/s, $1))] : [],
                         is_tmp_or_bak => $slot_id =~ /\./ ? 1 : 0,
-                        is_bak => $slot_id =~ /\.bak\.\d+$/s ? 1 : 0,
+                        is_bak => $slot_id =~ /\.bak\.\w*\d+$/s ? 1 : 0,
                     };
                 } else {
                     ();
@@ -1005,7 +1005,7 @@ SCRIPTS = {
                 $meta_encoded =~ s/\n/\\n/g;
                 print("$_->{slot_id} $_->{age_sec} $meta_encoded\n");
             }
-            print STDERR "returned ".scalar(@slot_infos)." slot(s) and also touched the newest slot $newest_dir (inode_ctime=$newest_inode_ctime, age_sec=$newest_age_sec)\n";
+            print STDERR "returned " . scalar(@slot_infos) . " slot(s) and also touched the newest slot $newest_dir (inode_ctime=$newest_inode_ctime, age_sec=$newest_age_sec)\n";
         }
         """.strip()
         % {"SLOT_INFOS": SLOT_INFOS}
@@ -1091,14 +1091,22 @@ SCRIPTS = {
                 next;
             }
             if (
-                $age_sec > $storage_max_age_sec ||
-                $is_bak && $age_sec > %(STORAGE_MAX_AGE_SEC_BAK)d
+                $is_bak &&
+                $age_sec > %(STORAGE_MAX_AGE_SEC_BAK)d
             ) {
+                print("will remove bak $dir in background ($suffix)\n");
                 push(@rm_dirs, $dir);
-                print("will remove $dir in background ($suffix)\n");
-            } else {
-                print("keeping $dir, new enough ($suffix)\n");
+                next;
             }
+            if ($age_sec > $storage_max_age_sec) {
+                my $dir_bak = $dir . ".bak.rm" . time();
+                my $dir_bak_name = ($dir_bak =~ m{([^/]+)$})[0];
+                print("will rename $dir to $dir_bak_name and remove in background ($suffix)\n");
+                rename($dir, $dir_bak) or die("rename $dir to $dir_bak: $!\n");
+                push(@rm_dirs, $dir_bak);
+                next;
+            }
+            print("keeping $dir, new enough ($suffix)\n");
         }
         if (!@rm_dirs) {
             unlink($lock_file);
