@@ -12,7 +12,8 @@ RUN true \
     && apt-get install -y --no-install-recommends \
       openssh-server \
       awscli jq gh rsync python3 python3-yaml rsyslog systemctl tzdata gosu less mc git curl wget pv psmisc unzip zstd file vim nano telnet net-tools apt-transport-https ca-certificates locales gnupg lsb-release \
-    && sed -i -e "s|#PermitRootLogin.*|PermitRootLogin no|" /etc/ssh/sshd_config \
+    && sed -i -E "s|#?PermitRootLogin.*|PermitRootLogin no|" /etc/ssh/sshd_config \
+    && sed -i -E "s|#?MaxStartups.*|MaxStartups 500:30:1000|" /etc/ssh/sshd_config \
     && useradd -m guest -s /bin/bash \
     && mkdir ~guest/.ssh && chmod 700 ~guest/.ssh \
     && chown -R guest:guest ~guest
