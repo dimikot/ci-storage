@@ -49,7 +49,11 @@ def gh_fetch_runners(
     *,
     repository: str,
 ) -> list[Runner]:
-    res = gh_api(f"repos/{repository}/actions/runners", "--paginate", "--slurp")
+    res = gh_api(
+        f"repos/{repository}/actions/runners?per_page=100",
+        "--paginate",
+        "--slurp",
+    )
     if not isinstance(res, list) or not res:
         raise ValueError(f"gh api returned a non-list of pages: {res}")
     return [

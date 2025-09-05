@@ -287,7 +287,9 @@ def action_load(
 
     if not slot_id:
         raise UserException(
-            f"none of the provided slot id(s) were found in the {storage}, aborting"
+            f"none of the provided slot id(s) were found in the {storage}, aborting. "
+            + "Most likely, the slot got evicted. "
+            + 'You may need to click "Re-run all jobs" button (and not just "Re-run failed jobs").'
         )
 
     host, port = parse_host_port(storage_host)

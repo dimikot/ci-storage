@@ -69,7 +69,7 @@ def main():
     parser.add_argument(
         "--poll-interval-sec",
         type=int,
-        default=30,
+        default=60,
         help="poll for the list of runners that often; it also determines the interval for publishing CloudWatch metrics",
     )
     parser.add_argument(

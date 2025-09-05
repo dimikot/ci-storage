@@ -31,7 +31,7 @@ from typing import Any, Literal, cast
 
 DUPLICATED_EVENTS_TTL = 3600
 JOB_TIMING_TTL = 3600 * 2
-WORKFLOW_TTL = 60 * 5
+WORKFLOW_TTL = 3600
 WORKFLOW_RUN_EVENT = "workflow_run"
 WORKFLOW_JOB_EVENT = "workflow_job"
 IGNORE_KEYS = [

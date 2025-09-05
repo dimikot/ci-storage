@@ -37,14 +37,14 @@ terminate_on_signal() {
   # Retry deleting the runner until it succeeds.
   # - Busy runner fails in deletion, so we can retry safely until it becomes
   #   idle and is successfully deleted.
-  # - In case we can't delete the runner for a long time still, the extrnal
+  # - In case we can't delete the runner for a long time still, the external
   #   orchestrator will eventually kill the container after a large timeout
   #   (say, 15 minutes or so) needed for a running job to finish.
   say "Removing the runner..."
   while :; do
     token=$(gh api -X POST --jq .token "repos/$GH_REPOSITORY/actions/runners/remove-token")
     cd ~/actions-runner && ./config.sh remove --token "$token" && break
-    sleep 5
+    sleep 15
     say "Retrying till the runner becomes idle and the removal succeeds..."
   done
 }
