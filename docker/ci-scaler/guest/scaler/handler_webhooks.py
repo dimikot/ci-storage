@@ -350,13 +350,25 @@ class HandlerWebhooks:
             timing.completed_at = now
 
         metrics: dict[str, int] = {}
-        if timing.started_at and timing.queued_at:
+        if (
+            timing.started_at
+            and timing.queued_at
+            and timing.started_at >= timing.queued_at
+        ):
             metrics["JobPickUpTimeSec"] = int(timing.started_at - timing.queued_at)
-        if timing.completed_at and timing.started_at:
+        if (
+            timing.completed_at
+            and timing.started_at
+            and timing.completed_at >= timing.started_at
+        ):
             metrics["JobExecutionTimeSec"] = int(
                 timing.completed_at - timing.started_at
             )
-        if timing.completed_at and timing.queued_at:
+        if (
+            timing.completed_at
+            and timing.queued_at
+            and timing.completed_at >= timing.queued_at
+        ):
             metrics["JobCompleteTimeSec"] = int(timing.completed_at - timing.queued_at)
 
         for metric in timing.bumped:
