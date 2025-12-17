@@ -75,7 +75,7 @@ def main():
     parser.add_argument(
         "--max-idle-age-sec",
         type=int,
-        default=300,
+        default=1200,
         help="idle runner instances will be removed from the auto-scaling group after this time if they are not needed for elasticity",
     )
     parser.add_argument(
