@@ -181,11 +181,12 @@ def gh_fetch_rate_limits() -> RateLimits:
 def gh_predict_workflow_labels(
     *,
     workflow: dict[str, Any],
+    known_labels: list[str],
 ) -> dict[str, int]:
     labels: dict[str, int] = {}
     for job in cast(dict[str, Any], workflow["jobs"]).values():
         inc = 1
-        runs_on = (
+        runs_on_list = (
             [str(k) for k in cast(list[Any], job["runs-on"])]
             if isinstance(job["runs-on"], list)
             else [str(job["runs-on"])]
@@ -199,7 +200,14 @@ def gh_predict_workflow_labels(
                     inc *= len(cast(list[Any], shards))
             if isinstance(max_parallel, int):
                 inc = min(inc, max_parallel)
-        for label in runs_on:
-            if "$" not in label:
-                labels[label] = labels.get(label, 0) + inc
+        for runs_on in runs_on_list:
+            if "$" in runs_on:
+                # It's a template, so extract known labels as strings from it:
+                # ${{ startsWith(github.ref_name, 'x') && 'label1' || 'label2' }}
+                for known_label in set(known_labels):
+                    if f"'{known_label}'" in runs_on or f'"{known_label}"' in runs_on:
+                        labels[known_label] = labels.get(known_label, 0) + inc
+            else:
+                # It's a runner label name directly.
+                labels[runs_on] = labels.get(runs_on, 0) + inc
     return labels

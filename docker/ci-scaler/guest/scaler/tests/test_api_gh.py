@@ -82,8 +82,15 @@ class Test(TestCase):
                                 },
                             },
                         },
+                        "job6": {
+                            "runs-on": "${{ startsWith(github.ref_name, 'x') && 'aaa' || 'bbb' }}",
+                        },
+                        "job7": {
+                            "runs-on": "aaa",
+                        },
                     }
-                }
+                },
+                known_labels=["aaa", "bbb"],
             ),
-            {"lab1": 1, "lab2": 2, "lab4": 2, "lab5": 4},
+            {"lab1": 1, "lab2": 2, "lab4": 2, "lab5": 4, "aaa": 2, "bbb": 1},
         )

@@ -240,7 +240,14 @@ class HandlerWebhooks:
                     self.workflows[cache_key] = workflow
                 else:
                     message += f" (cached)"
-                labels = gh_predict_workflow_labels(workflow=workflow)
+                labels = gh_predict_workflow_labels(
+                    workflow=workflow,
+                    known_labels=[
+                        asg_spec.label
+                        for asg_spec in self.asg_specs
+                        if asg_spec.repository == repository
+                    ],
+                )
                 log(
                     f"{message}... "
                     + " ".join([f"{k}:+{v}" for k, v in labels.items()])
