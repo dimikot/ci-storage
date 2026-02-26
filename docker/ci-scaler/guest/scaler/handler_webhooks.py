@@ -12,7 +12,6 @@ from api_gh import (
     gh_predict_workflow_labels,
     gh_webhook_ensure_absent,
     gh_webhook_ensure_exists,
-    gh_webhook_ping,
 )
 from api_aws import (
     DRY_RUN_MSG,
@@ -44,19 +43,13 @@ IGNORE_KEYS = [
     "action",
 ]
 URL_PATH = "/ci-storage"
-SERVICE_ACTION_INTERVAL_SEC = 10
+WEBHOOK_ENSURE_EXISTS_INTERVAL_SEC = 60
 
 
 @dataclasses.dataclass
 class Webhook:
     url: str
-    last_delivery_at: int | None
-
-
-@dataclasses.dataclass
-class ServiceAction:
-    prev_at: int
-    iteration: int = 0
+    ensure_exists_at: int
 
 
 @dataclasses.dataclass
@@ -73,7 +66,6 @@ class HandlerWebhooks:
         self.domain = domain
         self.asg_specs = asg_specs
         self.webhooks: dict[str, Webhook] = {}
-        self.service_action = ServiceAction(prev_at=int(time.time()))
         self.secret = gh_get_webhook_secret()
         self.duplicated_events = ExpiringDict[tuple[int, str], float](
             ttl=DUPLICATED_EVENTS_TTL
@@ -91,7 +83,7 @@ class HandlerWebhooks:
     def __enter__(self):
         if not self.secret:
             return self
-        for repository in list(set(asg_spec.repository for asg_spec in self.asg_specs)):
+        for repository in set(asg_spec.repository for asg_spec in self.asg_specs):
             url = f"https://{self.domain}{URL_PATH}"
             with logged_result(doing=f"Registering webhook for {repository}: {url}"):
                 gh_webhook_ensure_exists(
@@ -100,7 +92,10 @@ class HandlerWebhooks:
                     secret=self.secret,
                     events=[WORKFLOW_RUN_EVENT, WORKFLOW_JOB_EVENT],
                 )
-                self.webhooks[repository] = Webhook(url=url, last_delivery_at=None)
+                self.webhooks[repository] = Webhook(
+                    url=url,
+                    ensure_exists_at=int(time.time()),
+                )
         return self
 
     def __exit__(self, *_: Any):
@@ -112,20 +107,25 @@ class HandlerWebhooks:
                 gh_webhook_ensure_absent(repository=repository, url=webhook.url)
 
     def service_actions(self):
-        now = int(time.time())
-        if now > self.service_action.prev_at + SERVICE_ACTION_INTERVAL_SEC:
-            i = self.service_action.iteration
-            self.service_action.iteration += 1
-            self.service_action.prev_at = now
-            webhooks = [*self.webhooks.items()]
-            if webhooks:
-                repository, webhook = webhooks[i % len(webhooks)]
-                if webhook.last_delivery_at is None:
-                    with logged_result(
-                        swallow=True,
-                        doing=f"Sending additional PING to webhook for {repository}: {webhook.url}",
-                    ):
-                        gh_webhook_ping(repository=repository, url=webhook.url)
+        if not self.secret:
+            return
+        # We re-register webhooks periodically, since they may be de-registered
+        # when one of the ci-scaler hosts terminates. In this case, all other
+        # remaining hosts (in the load balancing group) will recreate the
+        # webhooks eventually.
+        for repository, webhook in self.webhooks.items():
+            now = int(time.time())
+            if now > webhook.ensure_exists_at + WEBHOOK_ENSURE_EXISTS_INTERVAL_SEC:
+                webhook.ensure_exists_at = now
+                with logged_result(swallow=True):
+                    res = gh_webhook_ensure_exists(
+                        repository=repository,
+                        url=webhook.url,
+                        secret=self.secret,
+                        events=[WORKFLOW_RUN_EVENT, WORKFLOW_JOB_EVENT],
+                    )
+                    if res == "created":
+                        log(f"Re-created webhook for {repository}: {webhook.url}")
 
     def handle(
         self,
@@ -179,9 +179,6 @@ class HandlerWebhooks:
                 )
 
         repository: str | None = data.get("repository", {}).get("full_name", None)
-        if repository in self.webhooks:
-            self.webhooks[repository].last_delivery_at = int(time.time())
-
         name = (
             str(run_payload.get("name"))
             if run_payload

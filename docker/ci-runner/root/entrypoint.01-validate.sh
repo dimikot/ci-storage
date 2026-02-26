@@ -29,8 +29,8 @@ if [[ "${TZ:=}" != "" && ! "$TZ" =~ ^[-+_/a-zA-Z0-9]+$ ]]; then
 fi
 
 export FORWARD_HOST
-if [[ "${FORWARD_HOST:=}" != "" && ! "$FORWARD_HOST" =~ ^[-.[:alnum:]]+(:[0-9]+)?$ ]]; then
-  say "If FORWARD_HOST is passed, it must be a hostname."
+if [[ "${FORWARD_HOST:=}" != "" && ! "$FORWARD_HOST" =~ ^([-.[:alnum:]]+(:[0-9]+)?[[:space:]]*)+$ ]]; then
+  say "If FORWARD_HOST is passed, it must be a hostname or a space-separated list of hostnames."
   exit 1
 fi
 

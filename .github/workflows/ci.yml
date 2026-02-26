@@ -150,7 +150,7 @@ jobs:
           GH_REPOSITORY: ${{ github.repository }}
           GH_LABELS: ${{ format('ci-storage-test-{0}-{1}', github.run_id, github.run_attempt) }}
           TZ: America/Los_Angeles
-          FORWARD_HOST: host.docker.internal
+          FORWARD_HOST: "host.docker.internal:42 host.docker.internal:4242"
 
   # Test the job with ci-storage-test tag which is initially queued, but then is
   # picked up by the ci-runner container booted in the previous job. In the end,

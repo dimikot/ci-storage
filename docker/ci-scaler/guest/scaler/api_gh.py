@@ -9,7 +9,7 @@ import time
 import traceback
 import yaml
 from helpers import Runner, RateLimits, check_output
-from typing import Any, cast
+from typing import Any, Literal, cast
 
 
 def gh(
@@ -98,7 +98,7 @@ def gh_webhook_ensure_exists(
     url: str,
     secret: str,
     events: list[str],
-):
+) -> Literal["created", "already_exists"]:
     try:
         gh_api(
             "-XPOST",
@@ -113,9 +113,11 @@ def gh_webhook_ensure_exists(
                 "active": True,
             },
         )
+        return "created"
     except subprocess.CalledProcessError as e:
-        if "Hook already exists" not in e.stdout:
-            raise
+        if "Hook already exists" in e.stdout:
+            return "already_exists"
+        raise
 
 
 def gh_webhook_ensure_absent(

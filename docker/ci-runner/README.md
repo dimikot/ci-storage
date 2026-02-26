@@ -15,7 +15,10 @@ self-hosted runners as you want. An example scenario:
    - `GH_LABELS` (required): labels added to this runner, comma-separated
    - `TZ` (optional): timezone name
    - `FORWARD_HOST` (optional): some ports at localhost (provided in
-     FORWARD_PORTS) will be forwarded to this host
+     FORWARD_PORTS) will be forwarded to this host; can also be a
+     space-separated list of hosts, in which case the 1st host plays the role of
+     a primary and the rest are backups (1st backup server available receives
+     all traffic)
    - `FORWARD_PORTS` (optional): a space-delimited list of forwarded TCP or UDP
      ports; any port number may be suffixed with "/udp" to forward UDP, e.g.
      "12345/udp"

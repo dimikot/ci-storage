@@ -14,7 +14,7 @@ fi
 GH_TOKEN=$(gh auth token) \
 GH_REPOSITORY=$(gh repo view --json owner,name -q '.owner.login + "/" + .name') \
 GH_LABELS=ci-storage-dev \
-FORWARD_HOST=host.docker.internal \
+FORWARD_HOST="host.docker.internal:42 host.docker.internal:4242" \
 TZ=America/Los_Angeles \
 BTIME="$btime" \
 ASGS=$(gh repo view --json owner,name -q '.owner.login + "/" + .name'):ci-storage-dev:myasg \
