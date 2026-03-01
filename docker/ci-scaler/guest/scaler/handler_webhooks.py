@@ -31,8 +31,8 @@ from typing import Any, Literal, cast
 DUPLICATED_EVENTS_TTL = 3600
 JOB_TIMING_TTL = 3600 * 2
 WORKFLOW_TTL = 3600
-WORKFLOW_RUN_EVENT = "workflow_run"
-WORKFLOW_JOB_EVENT = "workflow_job"
+WORKFLOW_RUN_EVENT = "workflow_run"  # https://docs.github.com/en/webhooks/webhook-events-and-payloads#workflow_run
+WORKFLOW_JOB_EVENT = "workflow_job"  # https://docs.github.com/en/webhooks/webhook-events-and-payloads#workflow_job
 IGNORE_KEYS = [
     "zen",
     "hook_id",
@@ -134,8 +134,8 @@ class HandlerWebhooks:
         data_bytes: bytes,
     ):
         action = data.get("action")
-        run_payload = data.get(WORKFLOW_RUN_EVENT)
-        job_payload = data.get(WORKFLOW_JOB_EVENT)
+        workflow_run = data.get(WORKFLOW_RUN_EVENT)
+        workflow_job = data.get(WORKFLOW_JOB_EVENT)
 
         # For local debugging only! Allows to simulate a webhook with just
         # querying an URL that includes the repo name and label:
@@ -144,8 +144,8 @@ class HandlerWebhooks:
         if (
             handler.client_address[0] == "127.0.0.1"
             and not action
-            and not run_payload
-            and not job_payload
+            and not workflow_run
+            and not workflow_job
         ):
             if match := re.match(
                 rf"^/{WORKFLOW_RUN_EVENT}/([^/]+/[^/]+)/([^/]+)/?$",
@@ -180,9 +180,9 @@ class HandlerWebhooks:
 
         repository: str | None = data.get("repository", {}).get("full_name", None)
         name = (
-            str(run_payload.get("name"))
-            if run_payload
-            else str(job_payload.get("name")) if job_payload else None
+            str(workflow_run.get("name"))
+            if workflow_run
+            else str(workflow_job.get("name")) if workflow_job else None
         )
         keys = [k for k in data.keys() if k not in IGNORE_KEYS]
         if keys:
@@ -207,14 +207,20 @@ class HandlerWebhooks:
         if error:
             return handler.send_error(403, error)
 
-        if run_payload:
+        if workflow_run:
             if action != "requested" and action != "in_progress":
                 return handler.send_json(
                     202,
                     message='ignoring action != ["requested", "in_progress"]',
                 )
 
-            event_key = (int(run_payload["id"]), str(run_payload["run_attempt"]))
+            event_key = (
+                int(workflow_run["id"]),
+                str(workflow_run["run_attempt"]),
+            )
+            handler.log_suffix += (
+                f" id={workflow_run["id"]}:{workflow_run["run_attempt"]}"
+            )
             processed_at = self.duplicated_events.get(event_key)
             if processed_at:
                 return handler.send_json(
@@ -222,8 +228,8 @@ class HandlerWebhooks:
                     message=f"ignoring event that has already been processed at {time.ctime(processed_at)}",
                 )
 
-            head_sha = str(run_payload["head_sha"])
-            path = str(run_payload["path"])
+            head_sha = str(workflow_run["head_sha"])
+            path = str(workflow_run["path"])
             message = f"{repository}{event_key}: downloading {os.path.basename(path)} and parsing jobs list"
             try:
                 cache_key = f"{repository}:{path}"
@@ -259,14 +265,14 @@ class HandlerWebhooks:
                 labels=labels,
             )
 
-        if job_payload:
+        if workflow_job:
             if action != "queued" and action != "in_progress" and action != "completed":
                 return handler.send_json(
                     202,
                     message='ignoring action != ["queued", "in_progress", "completed"]',
                 )
 
-            event_key = (int(job_payload["id"]), action)
+            event_key = (int(workflow_job["id"]), action)
             processed_at = self.duplicated_events.get(event_key)
             if processed_at:
                 return handler.send_json(
@@ -278,9 +284,9 @@ class HandlerWebhooks:
             return self._handle_workflow_job_timing(
                 handler=handler,
                 repository=repository,
-                labels={label: 1 for label in job_payload["labels"]},
+                labels={label: 1 for label in workflow_job["labels"]},
                 action=action,
-                job_id=int(job_payload["id"]),
+                job_id=int(workflow_job["id"]),
                 name=name,
             )
 
