@@ -219,7 +219,7 @@ class HandlerWebhooks:
                 str(workflow_run["run_attempt"]),
             )
             handler.log_suffix += (
-                f" id={workflow_run["id"]}:{workflow_run["run_attempt"]}"
+                f" id={workflow_run['id']}:{workflow_run['run_attempt']}"
             )
             processed_at = self.duplicated_events.get(event_key)
             if processed_at:
