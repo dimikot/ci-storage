@@ -19,7 +19,7 @@ if [[ ! -f "$updated_at_file" || "$(find . -name "$updated_at_file" -mtime +21)"
   esac
 
   say "Getting the latest runner version using HEAD to avoid rate limiting (previously updated at $(cat $updated_at_file))..."
-  runner_location=$(curl --head -sS --fail https://github.com/actions/runner/releases/latest | sed 's/\r$//' | grep -i "location:")
+  runner_location=$(curl -fsSL --retry 3 --retry-all-errors --head https://github.com/actions/runner/releases/latest | sed 's/\r$//' | grep -i "location:")
   runner_version="${runner_location##*/tag/v}"
 
   if [[ "$runner_version" == *.*.* ]]; then
@@ -32,7 +32,7 @@ if [[ ! -f "$updated_at_file" || "$(find . -name "$updated_at_file" -mtime +21)"
 
     if [[ ! -r "$path" ]]; then
       say "Downloading $url to $CACHE_DIR..."
-      curl --no-progress-meter -L "$url" > "$path.tmp"
+      curl -fsSL --retry 3 --retry-all-errors --no-progress-meter "$url" > "$path.tmp"
       mv -f "$path.tmp" "$path"
     else
       say "Using previously downloaded $path"

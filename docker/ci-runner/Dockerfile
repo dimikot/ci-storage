@@ -26,7 +26,7 @@ RUN true \
 # https://forums.docker.com/t/etc-init-d-docker-62-ulimit-error-setting-limit-invalid-argument-problem/139424
 RUN true \
     && install -m 0755 -d /etc/apt/keyrings \
-    && curl -fsSL https://download.docker.com/linux/ubuntu/gpg -o /etc/apt/keyrings/docker.asc \
+    && curl -fsSL --retry 3 --retry-all-errors https://download.docker.com/linux/ubuntu/gpg -o /etc/apt/keyrings/docker.asc \
     && chmod a+r /etc/apt/keyrings/docker.asc \
     && echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" | tee /etc/apt/sources.list.d/docker.list \
     && apt-get update -y \
@@ -54,8 +54,8 @@ RUN true \
       aarch64|arm64) arch=linux-arm64 ;; \
       *) echo >&2 "unsupported architecture: $arch"; exit 1 ;; \
     esac \
-    && runner_version=$(curl --silent "https://api.github.com/repos/actions/runner/releases/latest" | jq -r ".tag_name[1:]") \
-    && curl --no-progress-meter -L https://github.com/actions/runner/releases/download/v$runner_version/actions-runner-$arch-$runner_version.tar.gz | tar xz \
+    && runner_version=$(curl -fsSL --retry 3 --retry-all-errors "https://api.github.com/repos/actions/runner/releases/latest" | jq -r ".tag_name[1:]") \
+    && curl -fsSL --retry 3 --retry-all-errors --no-progress-meter https://github.com/actions/runner/releases/download/v$runner_version/actions-runner-$arch-$runner_version.tar.gz | tar xz \
     && date > .updated_at
 
 # Install OS dependencies needed by the action runner.
