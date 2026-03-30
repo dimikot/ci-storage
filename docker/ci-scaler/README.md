@@ -18,6 +18,12 @@ To use:
      "{owner}/{repo}:{label}:{asg_name}"
    - `DOMAIN`: domain of API Gateway which listens for GitHub webhook
      requests via HTTPS and forwards all requests to this container's port 8088
+   - `DYNAMODB_TABLE_PREFIX`: if set, use DynamoDB tables to store the state
+     across webhook requests; useful when running multiple instances of
+     ci-scaler
+   - `AWS_ENDPOINT_URL`, `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`:
+     optionally, you may pass these variables to access AWS API; used in
+     debugging mostly
    - `TZ` (optional): timezone name
 
 Example for docker compose:

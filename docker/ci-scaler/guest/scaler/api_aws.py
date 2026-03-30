@@ -64,9 +64,19 @@ def aws(
     input: str | None = None,
 ) -> str | None:
     region = aws_region()
+    endpoint_url = os.environ.get("AWS_ENDPOINT_URL")
+    if args[0] == "dynamodb" and endpoint_url:
+        region = "us-east-1"
     if not region:
         return None
-    return check_output(["aws", f"--region={region}", *args], input=input)
+    cmd = [
+        "aws",
+        f"--region={region}",
+        *([f"--endpoint-url={endpoint_url}"] if endpoint_url else ()),
+        *args,
+    ]
+    out = check_output(cmd, input=input)
+    return out
 
 
 def aws_json(

@@ -22,6 +22,28 @@ services:
       - DOMAIN
       - TZ
 
+  ci-scaler-shared:
+    build:
+      context: ci-scaler
+      dockerfile: Dockerfile
+    stop_grace_period: 1m
+    healthcheck:
+      test: ["CMD", "bash", "-c", "netstat -ltn | grep -c :8088"]
+      interval: 1s
+      timeout: 3s
+      retries: 10
+    ports:
+      - 18089:8088
+    environment:
+      - GH_TOKEN
+      - ASGS
+      - DOMAIN
+      - DYNAMODB_TABLE_PREFIX=ci-storage
+      - AWS_ENDPOINT_URL=http://dynamodb:8000
+      - AWS_ACCESS_KEY_ID=debug
+      - AWS_SECRET_ACCESS_KEY=debug
+      - TZ
+
   ci-storage:
     build:
       context: ci-storage
@@ -67,6 +89,9 @@ services:
       - ci-storage-cache:/var/cache/ci-storage
     tmpfs:
       - /mnt:exec
+
+  dynamodb:
+    image: amazon/dynamodb-local
 
 volumes:
   ci-storage-mnt:

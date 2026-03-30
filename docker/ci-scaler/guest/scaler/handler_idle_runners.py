@@ -12,10 +12,9 @@ from helpers import (
     AsgSpec,
     Runner,
     RunnersRegistry,
-    ExpiringDict,
     logged_result,
 )
-from typing import Literal
+from storage import StorageFactory
 
 REVISIT_TERMINATED_INSTANCE_SEC = datetime.timedelta(minutes=10).total_seconds()
 
@@ -26,12 +25,15 @@ class HandlerIdleRunners(AsgHandler):
         *,
         asg_spec: AsgSpec,
         max_idle_age_sec: int,
+        storage: StorageFactory,
     ):
         super().__init__(asg_spec=asg_spec)
         self.max_idle_age_sec = max_idle_age_sec
         self.idle_runners = RunnersRegistry()
-        self.terminated_instance_ids = ExpiringDict[str, Literal[True]](
+        self.terminated_instance_ids = storage.create(
+            bool,
             ttl=REVISIT_TERMINATED_INSTANCE_SEC,
+            name="terminated-instance-ids",
         )
 
     def handle(self, runners: list[Runner]) -> None:

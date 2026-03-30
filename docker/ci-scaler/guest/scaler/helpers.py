@@ -13,7 +13,7 @@ import traceback
 from http import HTTPStatus
 from json import dumps, loads, JSONDecodeError, decoder
 from types import TracebackType
-from typing import Any, Callable, Generic, Iterable, Literal, TypeVar
+from typing import Any, Callable, Iterable, Literal
 
 C_RED = "\033[1;31m"
 C_GRAY = "\033[1;30m"
@@ -315,48 +315,3 @@ class PostJsonHttpRequestHandler(http.server.BaseHTTPRequestHandler):
             log(explain, error=True)
 
 
-K = TypeVar("K")
-V = TypeVar("V")
-
-
-class ExpiringDict(Generic[K, V]):
-    def __init__(self, *, ttl: float):
-        self.ttl = ttl
-        self._store: dict[K, V] = {}
-        self._times: dict[K, float] = {}
-
-    def _is_expired(self, key: K) -> bool:
-        return time.time() - self._times.get(key, 0) > self.ttl
-
-    def _garbage_collect(self) -> None:
-        keys_to_delete = [key for key in self._store if self._is_expired(key)]
-        for key in keys_to_delete:
-            del self._store[key]
-            del self._times[key]
-
-    def __setitem__(self, key: K, value: V):
-        self._garbage_collect()
-        self._store[key] = value
-        self._times[key] = time.time()
-
-    def __getitem__(self, key: K) -> V:
-        if key not in self._store or self._is_expired(key):
-            raise KeyError(f"Key '{key}' not found or expired")
-        return self._store[key]
-
-    def __delitem__(self, key: K):
-        if key in self._store:
-            del self._store[key]
-            del self._times[key]
-
-    def __contains__(self, key: K):
-        return key in self._store and not self._is_expired(key)
-
-    def __repr__(self):
-        return f"ExpiringDict({{k: v for k, v in self.store.items() if not self._is_expired(k)}})"
-
-    def get(self, key: K, default: V | None = None) -> V | None:
-        try:
-            return self[key]
-        except KeyError:
-            return default

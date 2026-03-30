@@ -22,3 +22,8 @@ if [[ "${DOMAIN:=}" != "" && "$DOMAIN" != *.*  ]]; then
   say "If DOMAIN is set, it should be a fully qualified domain name."
   exit 1
 fi
+
+export DYNAMODB_TABLE_PREFIX=${DYNAMODB_TABLE_PREFIX:-}
+export AWS_ENDPOINT_URL=${AWS_ENDPOINT_URL:-}
+export AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID:-}
+export AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY:-}

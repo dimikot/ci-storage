@@ -20,6 +20,7 @@ from helpers import (
     Runner,
     wrap_main,
 )
+from storage import StorageFactory
 
 
 def main():
@@ -84,6 +85,12 @@ def main():
         default=120,
         help="offline runners will be de-registered after this time",
     )
+    parser.add_argument(
+        "--dynamodb-table-prefix",
+        type=str,
+        default=None,
+        help="if set, use DynamoDB shared storage with this table name prefix (useful when multiple ci-scaler instances are running)",
+    )
     args = parser.parse_args()
 
     port = int(args.port)
@@ -92,6 +99,7 @@ def main():
     poll_interval_sec = int(args.poll_interval_sec)
     max_idle_age_sec = int(args.max_idle_age_sec)
     max_offline_age_sec = int(args.max_offline_age_sec)
+    storage = StorageFactory(dynamodb_table_prefix=args.dynamodb_table_prefix or None)
 
     handler_cloudwatch_rate_limits = HandlerCloudWatchRateLimits()
     handlers_asg: dict[AsgSpec, list[AsgHandler]] = {}
@@ -102,6 +110,7 @@ def main():
                 HandlerIdleRunners(
                     asg_spec=asg_spec,
                     max_idle_age_sec=max_idle_age_sec,
+                    storage=storage,
                 ),
                 HandlerOfflineRunners(
                     asg_spec=asg_spec,
@@ -140,7 +149,11 @@ def main():
                 handler_cloudwatch_rate_limits.handle()
             time.sleep(poll_interval_sec)
 
-    with HandlerWebhooks(domain=domain, asg_specs=asg_specs) as webhooks:
+    with HandlerWebhooks(
+        domain=domain,
+        asg_specs=asg_specs,
+        storage=storage,
+    ) as webhooks:
         with socketserver.TCPServer(
             ("", port),
             webhooks.RequestHandler,
