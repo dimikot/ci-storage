@@ -82,7 +82,7 @@ def main():
     parser.add_argument(
         "--max-offline-age-sec",
         type=int,
-        default=120,
+        default=1200,
         help="offline runners will be de-registered after this time",
     )
     parser.add_argument(
