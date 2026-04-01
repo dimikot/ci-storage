@@ -39,6 +39,7 @@ services:
         - GH_TOKEN
         - ASGS
         - DOMAIN
+        - DYNAMODB_TABLE_PREFIX
         - TZ
 ```
 
