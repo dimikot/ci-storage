@@ -24,7 +24,7 @@ fi
 
 export TZ
 if [[ "${TZ:=}" != "" && ! "$TZ" =~ ^[-+_/a-zA-Z0-9]+$ ]]; then
-  say "If TZ is passed, it must be a valid TZ Idenfitier from https://en.wikipedia.org/wiki/List_of_tz_database_time_zones"
+  say "If TZ is passed, it must be a valid TZ Identifier from https://en.wikipedia.org/wiki/List_of_tz_database_time_zones"
   exit 1
 fi
 
@@ -35,8 +35,8 @@ if [[ "${FORWARD_HOST:=}" != "" && ! "$FORWARD_HOST" =~ ^([-.[:alnum:]]+(:[0-9]+
 fi
 
 export FORWARD_PORTS
-if [[ "${FORWARD_PORTS:=}" != "" && ! "$FORWARD_PORTS" =~ ^([[:space:]]*[0-9]+(/tcp|/udp)?[[:space:]]*)+$ ]]; then
-  echo 'If FORWARD_PORTS is passed, it must be in the form of (example): "123 456/udp 789/tcp".';
+if [[ "${FORWARD_PORTS:=}" != "" && ! "$FORWARD_PORTS" =~ ^([[:space:]]*[0-9]+(/tcp|/tcp-backup|/udp)?[[:space:]]*)+$ ]]; then
+  echo 'If FORWARD_PORTS is passed, it must be in the form of (example): "123 789/tcp 123/tcp-backup 456/udp".';
   exit 1
 fi
 

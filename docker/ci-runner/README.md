@@ -21,7 +21,9 @@ self-hosted runners as you want. An example scenario:
      all traffic)
    - `FORWARD_PORTS` (optional): a space-delimited list of forwarded TCP or UDP
      ports; any port number may be suffixed with "/udp" to forward UDP, e.g.
-     "12345/udp"
+     "12345/udp"; if it's "12345/tcp-backup", then the primary and backup hosts
+     are flipped (i.e. the traffic is first sent to backup host and only then,
+     if it's not available, to the primary host)
    - `CI_STORAGE_HOST` (optional): the host which the initial ci-storage run
      will pull the data from; often times it is set to "127.0.0.1:10022" where
      10022 is an example of SSH port forwarded via FORWARD_HOST/FORWARD_PORTS
