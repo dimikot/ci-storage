@@ -43,6 +43,9 @@ inputs:
   run-before:
     description: "If set, runs the specified bash command before storing/loading. Default: empty."
     required: false
+  run-after:
+    description: "If set, runs the specified bash command after storing/loading. Default: empty."
+    required: false
   verbose:
     description: "If set, prints the list of transferred files. Default: false."
     required: false
@@ -70,6 +73,7 @@ runs:
         layer_include="${{ inputs.layer-include || '' }}"
         sudo="${{ inputs.sudo || '' }}"
         run_before="${{ inputs.run-before || '' }}"
+        run_after="${{ inputs.run-after || '' }}"
         verbose="${{ inputs.verbose && '--verbose' || '' }}"
 
         if [[ "$storage_host" == "" ]]; then
@@ -120,4 +124,8 @@ runs:
           sudo /usr/bin/ci-storage "${args[@]}"
         else
           "${{ github.action_path }}/ci-storage" "${args[@]}"
+        fi
+
+        if [[ "$run_after" != "" ]]; then
+          bash -c "$run_after"
         fi
