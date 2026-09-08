@@ -1,4 +1,4 @@
-ARG BASE_IMAGE="ubuntu:22.04"
+ARG BASE_IMAGE="ubuntu:26.04"
 FROM $BASE_IMAGE
 
 ENV GH_TOKEN=""
@@ -31,11 +31,11 @@ RUN true \
     && echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" | tee /etc/apt/sources.list.d/docker.list \
     && apt-get update -y \
     && apt-get install -y --no-install-recommends skopeo \
-        "docker-ce=5:27.3.1-1~ubuntu.22.04~jammy" \
-        "docker-ce-cli=5:27.3.1-1~ubuntu.22.04~jammy" \
-        "containerd.io=1.7.23-1" \
-        "docker-compose-plugin=2.29.7-1~ubuntu.22.04~jammy" \
-        "docker-buildx-plugin=0.17.1-1~ubuntu.22.04~jammy" \
+        "docker-ce=5:29.8.0-1~ubuntu.26.04~resolute" \
+        "docker-ce-cli=5:29.8.0-1~ubuntu.26.04~resolute" \
+        "containerd.io=2.3.5-1~ubuntu.26.04~resolute" \
+        "docker-compose-plugin=5.5.1-1~ubuntu.26.04~resolute" \
+        "docker-buildx-plugin=0.37.0-1~ubuntu.26.04~resolute" \
     && sed -i -e "s/ulimit -Hn/ulimit -n/" /etc/init.d/docker
 
 # Add user "guest" with access to "docker" group.
