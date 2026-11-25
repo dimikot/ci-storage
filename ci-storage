@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 import collections
 import dataclasses
+import fcntl
 import glob
 import hashlib
 import os.path
@@ -171,17 +172,18 @@ def main():
     if action == "store":
         if len(slot_ids) != 1:
             parser.error(f"for {action} action, exactly one --slot-id is required")
-        action_store(
-            storage_host=storage_host,
-            storage_dir=storage_dir,
-            storage_max_age_sec=storage_max_age_sec,
-            slot_id=slot_ids[0],
-            local_dir=local_dir,
-            hints=hints,
-            exclude=exclude,
-            layer=layer,
-            verbose=verbose,
-        )
+        with lock_dir(dir=local_dir, exclusive=False):
+            action_store(
+                storage_host=storage_host,
+                storage_dir=storage_dir,
+                storage_max_age_sec=storage_max_age_sec,
+                slot_id=slot_ids[0],
+                local_dir=local_dir,
+                hints=hints,
+                exclude=exclude,
+                layer=layer,
+                verbose=verbose,
+            )
         action_maintenance(
             storage_host=storage_host,
             storage_dir=storage_dir,
@@ -191,17 +193,47 @@ def main():
     elif action == "load":
         if not slot_ids:
             parser.error(f"for {action} action, one or many --slot-id is required")
-        action_load(
-            storage_host=storage_host,
-            storage_dir=storage_dir,
-            storage_max_age_sec=storage_max_age_sec,
-            slot_ids=slot_ids,
-            local_dir=local_dir,
-            hints=hints,
-            exclude=exclude,
-            layer=layer,
-            verbose=verbose,
-        )
+        os.makedirs(local_dir, exist_ok=True)
+        with lock_dir(dir=local_dir, exclusive=True):
+            action_load(
+                storage_host=storage_host,
+                storage_dir=storage_dir,
+                storage_max_age_sec=storage_max_age_sec,
+                slot_ids=slot_ids,
+                local_dir=local_dir,
+                hints=hints,
+                exclude=exclude,
+                layer=layer,
+                verbose=verbose,
+            )
+
+
+#
+# Holds an exclusive or shared flock() on a directory within the context.
+# Tries a non-blocking lock first; if it's busy, prints a message and waits.
+#
+def lock_dir(
+    *,
+    dir: str,
+    exclusive: bool,
+):
+    class DirLock:
+        fd: int
+
+        def __enter__(self):
+            mode = fcntl.LOCK_EX if exclusive else fcntl.LOCK_SH
+            self.fd = os.open(dir, os.O_RDONLY)
+            try:
+                fcntl.flock(self.fd, mode | fcntl.LOCK_NB)
+            except BlockingIOError:
+                kind = "an exclusive" if exclusive else "a shared"
+                print(f"Waiting for {kind} lock on directory {dir}...")
+                fcntl.flock(self.fd, mode)
+
+        def __exit__(self, *_: typing.Any):
+            os.close(self.fd)
+
+    return DirLock()
 
 
 #
